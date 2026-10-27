@@ -3,8 +3,9 @@
 ## Reproduce
 
 ```sh
+mise install
 uv sync --dev
-uv run pytest tests/integration -v -rs
+mise exec -- uv run pytest tests/integration -v -rs
 ```
 
 Tests use the public `SessionConfig` and `DebugSession` APIs, not mocks or transport internals. They run by default; `-m 'not integration'` excludes them. Debugpy must be installed in the pytest interpreter. Go must be on `PATH`; Delve is found on `PATH` or in `.tools/bin/dlv`.
@@ -59,6 +60,14 @@ A separate diagnostic run restored `config.python = sys.executable` after parsin
 Expanded Go `debug` and `test` coverage found that Delve was building from the invoking shell's directory rather than the target module. The core owner corrected the owned Delve process working directory. Both modes now build, stop, inspect, step and exit successfully.
 
 Loopback attach does not verify SSH deployment, firewall traversal, remote authentication, independently launched PID attachment, or cross-platform behavior. Real-adapter step into and step out are outside this integration suite.
+
+## Toolchain mismatch regression
+
+Activating the user's mise environment reproduced six Go failures because its installed Delve 1.26.3 rejected Go 1.27.1. Earlier agent runs did not activate mise and instead selected the project-local Delve 1.27.2 fallback. The tests correctly failed instead of bypassing the adapter's compatibility check.
+
+The project keeps `go = "latest"` and pins Delve to 1.27.2. On 2026-10-27, the [official Go version endpoint](https://go.dev/VERSION?m=text) reported Go 1.27.3. [Delve 1.27.2's compatibility check](https://github.com/go-delve/delve/blob/v1.27.2/pkg/goversion/compat.go) supports Go 1.27. CI uses this verified pair.
+
+After installing the mise-managed tools, `mise exec -- uv run pytest` passed **96 tests with no skips** in 25.48 seconds using Go 1.27.3 and Delve 1.27.2. Type checking and Ruff also passed. No tests were skipped to hide the mismatch, and Go version checking remains enabled.
 
 ## Final acceptance
 

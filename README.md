@@ -146,12 +146,17 @@ On macOS, Go debugging requires working system debugger permissions and a signed
 
 ## Development
 
+Install the project tools with mise so tests use a compatible Go and Delve pair. The project tracks the latest Go release and pins Delve to a compatible version. CI currently verifies Go 1.27.3 with Delve 1.27.2.
+
 ```sh
+mise install
 uv sync
-uv run pytest -q
+mise exec -- uv run pytest
+uv run ty check .
 uv run ruff check .
-uv run pytest -q -m integration
 ```
+
+With mise activated in your shell, `uv run pytest` uses the same tools. A Delve compatibility error means the selected debugger is too old for Go; update Delve rather than disable its version check.
 
 Real-adapter tests use temporary loopback listeners and clean up their target processes. Tests skip with explicit reasons when an adapter or OS debugging capability is unavailable. A skip is not evidence of support. See [QA evidence](docs/qa.md), [research and primary sources](docs/research.md), and [the implementation plan](docs/implementation-plan.md).
 
