@@ -1,0 +1,15 @@
+{
+  "name": "Go hello",
+  "adapter": "go",
+  "request": "launch",
+  "arguments": {
+    "program": "go",
+    "cwd": "go",
+    "mode": "debug"
+  },
+  "breakpoints": {
+    "go/main.go": [
+      10
+    ]
+  }
+}

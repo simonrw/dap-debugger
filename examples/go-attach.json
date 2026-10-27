@@ -1,0 +1,17 @@
+{
+  "name": "Go TCP attach",
+  "adapter": "go",
+  "request": "attach",
+  "connect": {
+    "host": "127.0.0.1",
+    "port": 38697
+  },
+  "arguments": {
+    "mode": "remote"
+  },
+  "breakpoints": {
+    "go/main.go": [
+      10
+    ]
+  }
+}

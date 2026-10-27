@@ -1,0 +1,17 @@
+{
+  "name": "Python TCP attach",
+  "adapter": "python",
+  "request": "attach",
+  "connect": {
+    "host": "127.0.0.1",
+    "port": 5678
+  },
+  "arguments": {
+    "justMyCode": true
+  },
+  "breakpoints": {
+    "hello.py": [
+      7
+    ]
+  }
+}
