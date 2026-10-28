@@ -11,19 +11,16 @@ from rich.text import Text
 from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import (
     Button,
     DataTable,
-    Footer,
     Input,
     RichLog,
     Static,
-    Tab,
     TabbedContent,
     TabPane,
-    Tabs,
     Tree,
 )
 
@@ -43,7 +40,7 @@ class HelpScreen(ModalScreen[None]):
     BINDINGS = [("escape", "dismiss", "Close help"), ("f1", "dismiss", "Close help")]
     DEFAULT_CSS = """
     HelpScreen { align: center middle; }
-    #help-box { width: 70; max-width: 95%; height: auto; padding: 1 2; border: round $accent; background: $surface; }
+    #help-box { width: 70; max-width: 95%; height: auto; max-height: 100%; overflow-y: auto; padding: 1 2; border: round $accent; background: $surface; }
     #help-text { height: auto; }
     #help-close { margin-top: 1; }
     """
@@ -53,16 +50,16 @@ class HelpScreen(ModalScreen[None]):
             yield Static(
                 "F5 Continue   F6 Pause   F9 Breakpoint\n"
                 "F10 Step over   F11 Step into   Shift+F11 Step out\n"
-                "Ctrl+E Expression   Ctrl+D Disconnect   Ctrl+Q Quit\n\n"
-                "All actions also have clickable buttons. Tab / Shift+Tab move focus; "
-                "arrows and Enter select source lines, threads, frames, and variables. "
-                "Expand scopes and variables to load their children.\n\n"
-                "Enter in the expression field evaluates explicitly in the selected frame. "
-                "Evaluation can modify the target.\n\n"
-                "Breakpoints: ? pending, B verified, ! rejected, R relocated from this line. "
-                "The > marker is the current execution line.\n\n"
-                "Disconnect stops a local launch and preserves an attached target; paused targets may remain paused. "
-                "Use the pane tabs on small terminals. Escape closes this help.",
+                "F2 Stack   F3 Variables   F4 Output\n"
+                "Ctrl+E Expression   Escape Back to code\n"
+                "Ctrl+D Disconnect   Ctrl+Q Quit\n\n"
+                "Tab / Shift+Tab move focus; arrows / Enter select or expand.\n"
+                "Hover over buttons for shortcuts.\n\n"
+                "Evaluation runs in the selected frame and can modify the target.\n\n"
+                "Breakpoints: ? pending, B verified, ! rejected, R relocated.\n"
+                "> marks the execution line.\n\n"
+                "Disconnect stops launches and detaches attached targets.\n"
+                "Paused attached targets may remain paused.",
                 id="help-text",
                 markup=False,
             )
@@ -96,7 +93,12 @@ class DebuggerApp(App[None]):
     """Inspect and control a session, with requests running outside input handlers."""
 
     TITLE = "DAP Debugger"
+    AUTO_FOCUS = "#source"
     BINDINGS = [
+        Binding("f2", "stack", "Stack"),
+        Binding("f3", "variables", "Variables"),
+        Binding("f4", "output", "Output"),
+        Binding("escape", "source", "Back to code"),
         Binding("f5", "continue", "Continue"),
         Binding("f6", "pause", "Pause"),
         Binding("f9", "breakpoint", "Breakpoint"),
@@ -110,35 +112,37 @@ class DebuggerApp(App[None]):
     ]
     CSS = """
     Screen { layout: vertical; }
-    #status { height: 1; background: $boost; padding: 0 1; }
-    #actions { grid-size: 5; grid-gutter: 0 1; height: 6; padding: 0 1; }
-    #actions Button { width: 1fr; min-width: 8; }
-    #view-tabs { display: none; }
-    #workspace { height: 1fr; min-height: 5; }
-    #source-pane { width: 2fr; border: round $primary; }
-    #source-title { height: auto; max-height: 3; padding: 0 1; }
+    #frame { height: 1fr; border: round $panel; }
+    #actions { height: 1; scrollbar-size: 0 0; background: $surface; }
+    #actions Button, #actions Button:hover, #actions Button.-active {
+        width: auto; min-width: 3; height: 1; border: none; padding: 0;
+        text-style: none;
+    }
+    #actions Button:focus { text-style: bold reverse; }
+    #status { height: 1; color: $text-muted; padding: 0 1; }
+    #workspace { height: 1fr; min-height: 3; }
+    #source-pane { width: 1fr; }
+    #source-title { height: 1; padding: 0 1; color: $text-muted; }
     #source { height: 1fr; }
-    #inspectors { width: 1fr; min-width: 28; }
+    #inspectors { display: none; width: 1fr; min-width: 28; border-left: solid $panel; }
+    .inspecting #source-pane { width: 2fr; }
+    .inspecting #inspectors { display: block; }
     #inspectors ContentSwitcher { height: 1fr; }
     #inspectors TabPane { padding: 0; }
-    #threads { height: 6; }
-    #stack { height: 1fr; }
-    #variables { height: 1fr; }
-    #logs { height: 9; min-height: 5; }
+    #threads { height: 5; }
+    #stack, #variables { height: 1fr; }
+    #logs { display: none; height: 30%; min-height: 5; border-top: solid $panel; }
+    .logging #logs { display: block; }
     #logs ContentSwitcher { height: 1fr; }
     #logs TabPane { padding: 0; }
     RichLog { height: 1fr; }
-    #evaluate-row { height: 3; }
+    #evaluate-row { display: none; height: 3; }
+    .evaluating #evaluate-row { display: block; }
     #expression { width: 1fr; }
-    #evaluate { width: 12; min-width: 12; }
-    .narrow #view-tabs { display: block; height: 3; }
-    .narrow #source-pane { display: none; width: 1fr; height: 1fr; }
-    .narrow.source-view #source-pane { display: block; }
-    .narrow #inspectors { width: 1fr; height: 1fr; }
-    .narrow.source-view #inspectors { display: none; }
-    .narrow #inspectors > ContentTabs { display: none; }
-    .narrow #threads { height: 2; }
-    .narrow #logs { height: 4; min-height: 4; }
+    #evaluate { width: 10; min-width: 10; }
+    .narrow.inspecting #source-pane { display: none; }
+    .narrow #inspectors { width: 1fr; border-left: none; }
+    .narrow #threads { height: 3; }
     """
 
     def __init__(self, config: SessionConfig, *, session: Session | None = None) -> None:
@@ -166,60 +170,58 @@ class DebuggerApp(App[None]):
         self._session_close_task: asyncio.Task[None] | None = None
 
     def compose(self) -> ComposeResult:
-        yield Static(literal(f"{self.config.name} | Ready to connect"), id="status")
-        with Grid(id="actions"):
-            for label, action in [
-                ("Continue", "continue"),
-                ("Pause", "pause"),
-                ("Breakpoint", "breakpoint"),
-                ("Step over", "step-over"),
-                ("Step into", "step-into"),
-                ("Step out", "step-out"),
-                ("Disconnect", "disconnect"),
-                ("Expression", "expression-focus"),
-                ("Help", "help"),
-                ("Quit", "quit"),
-            ]:
-                yield Button(label, id=action)
-        yield Tabs(
-            Tab("Source", id="source-view"),
-            Tab("Threads / stack", id="stack-view"),
-            Tab("Variables", id="variables-view"),
-            id="view-tabs",
-        )
-        with Horizontal(id="workspace"):
-            with Vertical(id="source-pane"):
-                yield Static(
-                    "Source appears when the target stops. F1 for help.",
-                    id="source-title",
-                    markup=False,
+        with Vertical(id="frame"):
+            with HorizontalScroll(id="actions"):
+                for label, action, tooltip in [
+                    ("Run", "continue", "Continue (F5)"),
+                    ("Pause", "pause", "Pause (F6)"),
+                    ("Over", "step-over", "Step over (F10)"),
+                    ("Into", "step-into", "Step into (F11)"),
+                    ("Out", "step-out", "Step out (Shift+F11)"),
+                    ("BP", "breakpoint", "Toggle breakpoint (F9)"),
+                    ("Stack", "stack-focus", "Toggle threads / stack (F2)"),
+                    ("Vars", "variables-focus", "Toggle variables (F3)"),
+                    ("Log", "output-focus", "Toggle output (F4)"),
+                    ("Eval", "expression-focus", "Evaluate expression (Ctrl+E)"),
+                    ("Stop", "disconnect", "Disconnect attached target / stop launch (Ctrl+D)"),
+                    ("?", "help", "Help (F1); quit with Ctrl+Q"),
+                ]:
+                    yield Button(label, id=action, tooltip=tooltip)
+            with Horizontal(id="workspace"):
+                with Vertical(id="source-pane"):
+                    yield Static(
+                        "Source appears when the target stops. F1 for help.",
+                        id="source-title",
+                        markup=False,
+                    )
+                    yield DataTable(
+                        id="source", cursor_type="row", show_header=False, show_row_labels=False
+                    )
+                with TabbedContent(id="inspectors"):
+                    with TabPane("Threads / stack", id="stack-tab"):
+                        yield DataTable(id="threads", cursor_type="row", show_row_labels=False)
+                        yield DataTable(id="stack", cursor_type="row", show_row_labels=False)
+                    with TabPane("Variables", id="variables-tab"):
+                        yield Tree("Scopes appear when stopped", id="variables")
+            with TabbedContent(id="logs"):
+                with TabPane("Output", id="output-tab"):
+                    yield RichLog(
+                        id="output", max_lines=2000, markup=False, highlight=False, wrap=True
+                    )
+                with TabPane("Results", id="results-tab"):
+                    yield RichLog(
+                        id="results", max_lines=1000, markup=False, highlight=False, wrap=True
+                    )
+                with TabPane("Diagnostics", id="diagnostics-tab"):
+                    yield RichLog(
+                        id="diagnostics", max_lines=1000, markup=False, highlight=False, wrap=True
+                    )
+            with Horizontal(id="evaluate-row"):
+                yield Input(
+                    placeholder="Expression (can modify target); Enter to evaluate", id="expression"
                 )
-                yield DataTable(
-                    id="source", cursor_type="row", show_header=False, show_row_labels=False
-                )
-            with TabbedContent(id="inspectors"):
-                with TabPane("Threads / stack", id="stack-tab"):
-                    yield DataTable(id="threads", cursor_type="row", show_row_labels=False)
-                    yield DataTable(id="stack", cursor_type="row", show_row_labels=False)
-                with TabPane("Variables", id="variables-tab"):
-                    yield Tree("Scopes appear when stopped", id="variables")
-        with TabbedContent(id="logs"):
-            with TabPane("Output", id="output-tab"):
-                yield RichLog(id="output", max_lines=2000, markup=False, highlight=False, wrap=True)
-            with TabPane("Results", id="results-tab"):
-                yield RichLog(
-                    id="results", max_lines=1000, markup=False, highlight=False, wrap=True
-                )
-            with TabPane("Diagnostics", id="diagnostics-tab"):
-                yield RichLog(
-                    id="diagnostics", max_lines=1000, markup=False, highlight=False, wrap=True
-                )
-        with Horizontal(id="evaluate-row"):
-            yield Input(
-                placeholder="Expression (can modify target); Enter to evaluate", id="expression"
-            )
-            yield Button("Evaluate", id="evaluate", disabled=True)
-        yield Footer()
+                yield Button("Evaluate", id="evaluate", disabled=True)
+            yield Static(literal(f"{self.config.name} | Ready to connect | F1 Help"), id="status")
 
     @property
     def _debug_screen(self) -> Screen:
@@ -230,7 +232,6 @@ class DebuggerApp(App[None]):
         self._debug_screen.query_one("#threads", DataTable).add_columns("Thread", "Name")
         self._debug_screen.query_one("#stack", DataTable).add_columns("Frame", "Location")
         self._debug_screen.set_class(self.size.width < 100, "narrow")
-        self._debug_screen.add_class("source-view")
         self._set_state("starting")
         self._spawn(self._consume_events())
         self._spawn(self._start_session())
@@ -238,13 +239,40 @@ class DebuggerApp(App[None]):
     def on_resize(self) -> None:
         self._debug_screen.set_class(self.size.width < 100, "narrow")
 
-    @on(Tabs.TabActivated, "#view-tabs")
-    def select_pane(self, event: Tabs.TabActivated) -> None:
-        self._debug_screen.set_class(event.tab.id == "source-view", "source-view")
-        if event.tab.id != "source-view":
-            self._debug_screen.query_one("#inspectors", TabbedContent).active = (
-                "stack-tab" if event.tab.id == "stack-view" else "variables-tab"
-            )
+    def _toggle_inspector(self, pane: str, focus: str) -> None:
+        screen = self._debug_screen
+        inspectors = screen.query_one("#inspectors", TabbedContent)
+        if screen.has_class("inspecting") and inspectors.active == pane:
+            screen.remove_class("inspecting")
+            screen.query_one("#source").focus()
+        else:
+            inspectors.active = pane
+            screen.add_class("inspecting")
+            self.call_after_refresh(screen.query_one(focus).focus)
+
+    def action_stack(self) -> None:
+        self._toggle_inspector("stack-tab", "#stack")
+
+    def action_variables(self) -> None:
+        self._toggle_inspector("variables-tab", "#variables")
+
+    def action_output(self) -> None:
+        screen = self._debug_screen
+        if screen.has_class("logging"):
+            screen.remove_class("logging", "evaluating")
+            focus = "#source"
+            if screen.has_class("narrow") and screen.has_class("inspecting"):
+                inspectors = screen.query_one("#inspectors", TabbedContent)
+                focus = "#stack" if inspectors.active == "stack-tab" else "#variables"
+            screen.query_one(focus).focus()
+        else:
+            screen.add_class("logging")
+            screen.query_one("#logs", TabbedContent).active = "output-tab"
+            self.call_after_refresh(screen.query_one("#output").focus)
+
+    def action_source(self) -> None:
+        self._debug_screen.remove_class("inspecting", "logging", "evaluating")
+        self._debug_screen.query_one("#source").focus()
 
     def _spawn(self, operation: Coroutine[Any, Any, None]) -> None:
         self.run_worker(self._guard(operation), exit_on_error=False)
@@ -256,13 +284,14 @@ class DebuggerApp(App[None]):
             self._diagnostic(str(error))
 
     def _diagnostic(self, message: str) -> None:
+        self._debug_screen.add_class("logging")
         self._debug_screen.query_one("#diagnostics", RichLog).write(literal(message))
         self._debug_screen.query_one("#logs", TabbedContent).active = "diagnostics-tab"
 
     def _set_state(self, state: str) -> None:
         self._session_state = state
         self._debug_screen.query_one("#status", Static).update(
-            literal(f"{self.config.name} | {state}")
+            literal(f"{self.config.name} | {state} | F1 Help")
         )
         self._update_actions()
 
@@ -665,7 +694,9 @@ class DebuggerApp(App[None]):
         self._execution("stepOut")
 
     def action_evaluate(self) -> None:
-        self._debug_screen.query_one("#expression", Input).focus()
+        self._debug_screen.add_class("logging", "evaluating")
+        self._debug_screen.query_one("#logs", TabbedContent).active = "results-tab"
+        self.call_after_refresh(self._debug_screen.query_one("#expression", Input).focus)
 
     @on(Input.Submitted, "#expression")
     def evaluate_expression(self) -> None:
@@ -687,6 +718,7 @@ class DebuggerApp(App[None]):
         self._debug_screen.query_one("#results", RichLog).write(
             literal(f"> {expression}\n{response.get('result', '')}")
         )
+        self._debug_screen.add_class("logging")
         self._debug_screen.query_one("#logs", TabbedContent).active = "results-tab"
         if response.get("variablesReference", 0):
             variable = {**response, "name": expression, "value": response.get("result", "")}
@@ -695,11 +727,11 @@ class DebuggerApp(App[None]):
             )
 
     @on(Button.Pressed)
-    async def button_action(self, event: Button.Pressed) -> None:
-        if event.button.id == "quit":
-            await self.action_quit()
-            return
+    def button_action(self, event: Button.Pressed) -> None:
         actions = {
+            "stack-focus": self.action_stack,
+            "variables-focus": self.action_variables,
+            "output-focus": self.action_output,
             "continue": self.action_continue,
             "pause": self.action_pause,
             "step-over": self.action_step_over,

@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 from rich.text import Text
-from textual.widgets import Button, DataTable, Input, RichLog, Static, TabbedContent, Tabs, Tree
+from textual.widgets import Button, DataTable, Input, RichLog, Static, TabbedContent, Tree
 
 from dap_debugger.config import SessionConfig
 from dap_debugger.ui import DebuggerApp, HelpScreen
@@ -172,7 +172,7 @@ async def test_start_inspect_expand_evaluate_and_literal_text(session: FakeSessi
         )
         assert app.query_one("#threads", DataTable).get_row("17")[1].plain == "[bold]main[/bold]"
 
-        app.query_one("#inspectors", TabbedContent).active = "variables-tab"
+        await pilot.press("f3")
         await pilot.pause()
         tree = app.query_one("#variables", Tree)
         tree.focus()
@@ -208,6 +208,7 @@ async def test_select_thread_frame_and_discard_old_frame_results(session: FakeSe
         await stopped(app, pilot, session)
         old_scopes = asyncio.Event()
         session.blocked["scopes"] = old_scopes
+        await pilot.press("f2")
         stack = app.query_one("#stack", DataTable)
         stack.focus()
         stack.move_cursor(row=1)
@@ -242,7 +243,7 @@ async def test_resume_discards_delayed_inspection(session: FakeSession, delayed:
         session.emit("stopped", threadId=29)
         if delayed == "variables":
             await until(pilot, lambda: bool(app.query_one("#variables", Tree).root.children))
-            app.query_one("#inspectors", TabbedContent).active = "variables-tab"
+            await pilot.press("f3")
             await pilot.pause()
             app.query_one("#variables", Tree).focus()
             await pilot.press("down", "enter")
@@ -337,7 +338,7 @@ async def test_missing_source_fallback_failure_resize_and_cleanup(session: FakeS
         await pilot.pause()
         assert not app.query_one("#inspectors").display
         assert app.query_one("#expression").region.bottom < app.size.height
-        app.query_one("#view-tabs", Tabs).active = "stack-view"
+        await pilot.press("f2")
         await pilot.pause()
         assert app.query_one("#stack").region.height >= 2
         assert not app.query_one("#source-pane").display
@@ -375,6 +376,7 @@ async def test_failed_step_recovers_after_thread_selection(session: FakeSession)
         await stopped(app, pilot, session)
         await pilot.press("f10")
         await until(pilot, lambda: bool(calls(session, "next")))
+        await pilot.press("f2")
         threads = app.query_one("#threads", DataTable)
         threads.focus()
         threads.move_cursor(row=1)
@@ -407,5 +409,47 @@ async def test_help_does_not_interrupt_live_updates(session: FakeSession) -> Non
         assert isinstance(app.screen, HelpScreen)
         await pilot.press("escape")
         await until(pilot, lambda: app.query_one("#source", DataTable).row_count == 3)
+        await pilot.press("f4")
         await until(pilot, lambda: "Output while help is open" in log_text(app, "output"))
         assert not app.query_one("#continue", Button).disabled
+
+
+@pytest.mark.parametrize("size", [(120, 42), (80, 24)])
+async def test_minimal_workspace_and_keyboard_panes(
+    session: FakeSession, size: tuple[int, int]
+) -> None:
+    app = DebuggerApp(session.config, session=session)
+    async with app.run_test(size=size) as pilot:
+        await stopped(app, pilot, session)
+        source = app.query_one("#source", DataTable)
+        assert app.focused is source
+        assert source.region.height >= size[1] - 5
+        assert not app.query_one("#inspectors").display
+        assert not app.query_one("#logs").display
+        assert not app.query_one("#evaluate-row").display
+        assert app.query_one("#help").region.right < size[0]
+
+        await pilot.press("f2")
+        assert app.focused is app.query_one("#stack")
+        await pilot.press("f3")
+        assert app.focused is app.query_one("#variables")
+        await pilot.press("f4", "f4")
+        assert app.focused is (source if size[0] >= 100 else app.query_one("#variables"))
+        await pilot.press("f3")
+        assert app.focused is source
+        assert not app.query_one("#inspectors").display
+
+        session.emit("output", output="Retained while hidden")
+        await pilot.click("#output-focus")
+        await until(pilot, lambda: "Retained while hidden" in log_text(app, "output"))
+        await pilot.press("f4")
+        assert not app.query_one("#logs").display
+        await pilot.press("ctrl+e", "x", "enter")
+        await until(pilot, lambda: "42" in log_text(app, "results"))
+        await pilot.press("escape")
+        assert app.focused is source
+        assert source.region.height >= size[1] - 5
+        assert not app.query_one("#evaluate-row").display
+        await pilot.click("#stack-focus")
+        await pilot.press("escape")
+        assert app.focused is source

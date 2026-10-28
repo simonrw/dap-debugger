@@ -31,10 +31,14 @@ The equivalent module entry point is `python -m dap_debugger CONFIG.json`. Use `
 
 ## Interface
 
-Inspect source, threads or goroutines, stack frames, scopes and expandable variables. The output pane shows target output and diagnostics. Submit expressions explicitly in the evaluation input. **Evaluation can modify the target.**
+The code fills a thin frame with a single row of compact buttons. Threads, stack frames, variables, output and evaluation stay hidden until opened. Errors reveal the diagnostics pane automatically. Submit expressions explicitly in the evaluation input. **Evaluation can modify the target.**
 
 | Key | Action |
 | --- | --- |
+| `F2` | Toggle threads / stack |
+| `F3` | Toggle variables |
+| `F4` | Toggle output |
+| `Escape` | Close panes and return to code |
 | `F5` | Continue |
 | `F6` | Pause |
 | `F9` | Toggle breakpoint on the selected source line |
@@ -46,7 +50,7 @@ Inspect source, threads or goroutines, stack frames, scopes and expandable varia
 | `Ctrl+Q` | Close session and quit |
 | `F1` | Help |
 
-Buttons provide alternatives to function keys. Use Tab to move between controls and arrow keys to select source lines, threads, frames and variables.
+Hover over a button for its action and shortcut. The code has focus on startup. Use Tab to move between controls and arrow keys to select source lines, threads, frames and variables. Inspectors open beside the code on wide terminals and replace it on narrow terminals.
 
 ## Launch configuration
 
