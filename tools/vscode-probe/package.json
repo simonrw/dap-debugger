@@ -1,0 +1,28 @@
+{
+  "name": "dap-probe",
+  "publisher": "local",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "debuggers": [
+      {
+        "type": "probe-go",
+        "label": "Probe Go (Delve)"
+      },
+      {
+        "type": "probe-python",
+        "label": "Probe Python (debugpy)"
+      },
+      {
+        "type": "debugpy",
+        "label": "Probe debugpy subprocess sessions"
+      }
+    ]
+  }
+}

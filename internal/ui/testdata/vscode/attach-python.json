@@ -1,0 +1,59 @@
+{
+ "server": {
+  "command": "PY=python3; [ -x ../.venv/bin/python ] && PY=../.venv/bin/python; exec $PY -m debugpy --listen 127.0.0.1:{port} ../internal/session/testdata/loop.py",
+  "ready": "tick 2"
+ },
+ "config": {
+  "connect": {
+   "host": "127.0.0.1",
+   "port": "{port}"
+  },
+  "name": "Python attach",
+  "request": "attach",
+  "type": "debugpy"
+ },
+ "vscode": {
+  "debugServer": "{port}"
+ },
+ "breakpoints": [
+  {
+   "file": "../internal/session/testdata/loop.py",
+   "line": 8
+  }
+ ],
+ "steps": [
+  "continue",
+  "stop"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "attach"
+   ],
+   [
+    "setBreakpoints loop.py [8]",
+    "setFunctionBreakpoints []",
+    "setExceptionBreakpoints [uncaught]",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "threads",
+    "stackTrace",
+    "continue"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "variables",
+    "stackTrace",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

@@ -1,0 +1,61 @@
+{
+ "config": {
+  "console": "internalConsole",
+  "justMyCode": true,
+  "name": "Python",
+  "program": "${workspaceFolder}/hello.py",
+  "request": "launch",
+  "type": "debugpy"
+ },
+ "breakpoints": [
+  {
+   "file": "hello.py",
+   "line": 8
+  }
+ ],
+ "steps": [
+  "stepOver",
+  "continue",
+  "stop"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setBreakpoints hello.py [8]",
+    "setFunctionBreakpoints []",
+    "setExceptionBreakpoints [uncaught]",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "threads",
+    "stackTrace",
+    "scopes",
+    "stackTrace",
+    "next"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "variables",
+    "stackTrace",
+    "continue"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "variables",
+    "stackTrace",
+    "terminate restart=false",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

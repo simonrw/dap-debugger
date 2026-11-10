@@ -1,80 +1,53 @@
-# Real-adapter QA
+# QA
 
 ## Reproduce
 
 ```sh
 mise install
-uv sync --dev
-mise exec -- uv run pytest tests/integration -v -rs
+mise exec -- go test -race ./...
 ```
 
-Tests use the public `SessionConfig` and `DebugSession` APIs, not mocks or transport internals. They run by default; `-m 'not integration'` excludes them. Debugpy must be installed in the pytest interpreter. Go must be on `PATH`; Delve is found on `PATH` or in `.tools/bin/dlv`.
-
-Optional project-local Delve installation, without changing system installations or `go.mod`:
-
-```sh
-mkdir -p .tools/bin
-GOBIN="$PWD/.tools/bin" go install github.com/go-delve/delve/cmd/dlv@v1.27.2
-```
+Delve must be on `PATH` (mise installs a version compatible with the pinned Go). debugpy is taken from `.venv/bin/python` or `python3` if installed there, otherwise from a throwaway `uv` environment. Tests skip with a reason when an adapter is unavailable. A skip is not evidence that a scenario works.
 
 ## Coverage
 
-- Python launch through the real debugpy adapter.
-- Python TCP attach to an independently started debugpy listener, with both identical and mapped source paths. The target must produce a heartbeat before the client connects.
-- Go launch in `exec`, `debug` and `test` modes. The `exec` fixture is compiled with `-gcflags=all=-N -l`.
-- Go remote attach to `dlv exec --headless --accept-multiclient --continue`, with both identical and mapped source paths. This is not attach to `dlv dap` or PID injection.
-- Each scenario checks a breakpoint stop, stopped state, real thread IDs, stack source and line, scopes, local variables, explicit evaluation, verified breakpoint replacement, step over, breakpoint removal, and continue.
-- Launch scenarios continue to target termination. Attach scenarios disconnect with ownership defaults, then require a fresh target heartbeat while the external debugger process remains alive. Go attach scenarios reconnect and repeat inspection against the same persistent server.
+- `internal/dap`: framing, malformed frames, request/response correlation, adapter error formatting, rejection of reverse requests, timeouts and failure of pending requests when the connection closes.
+- `internal/launch`: adapter definitions and their precedence, `tasks.json` resolution (including `npm`, `typescript` and `go` tasks and background ready patterns) (dependencies, shell quoting, options, unsupported tasks, cycles), JSONC, workspace detection, variable substitution, platform overrides, `envFile`, and adapter plans for debugpy launch/attach, Go launch/remote attach/local attach and `debugServer`.
+- `internal/state`: persistence, ordering and independence of workspaces in one state file.
+- `internal/session` with the fake adapter (`internal/daptest`): a session against an adapter known only by its definition, over stdio, an adapter that listens (`{port}`), an adapter that connects back (`{address}`), a per-configuration `debugAdapter` and `debugServer`.
+- `internal/session` (real adapters):
+  - Python and Go launch: a verified breakpoint stops the program; the stack, scopes, locals and evaluation are checked; step over, breakpoint removal and continue to termination, with program output and no adapter errors.
+  - Stop while paused, for both adapters, without adapter tracebacks.
+  - `console: integratedTerminal` for both adapters: the program runs on a pseudo-terminal, reads a line written through the session, and (debugpy) reads a password without echoing it.
+  - Python attach to `debugpy --listen` and Go attach to `dlv exec --headless --accept-multiclient --continue`: attach while the program runs, set a breakpoint while running, stop there, detach, then reattach to the same still-running server.
+- `internal/ui` with the fake adapter: a whole session driven with keys (breakpoint, variables, set value, step, continue); a compound of two sessions where one starts a child session with `startDebugging`, then `stopAll`; inline breakpoints sent with their column and remembered; the memory view reading and writing memory; inline breakpoints snapping to `breakpointLocations` positions; a breakpoint in a source provided by reference; a background `preLaunchTask` that the launch waits for, reused by the next session and stopped on quit.
+- `internal/ui` against the user's VS Code `keybindings.json` (skipped without one): every debug function key matches VS Code's effective binding.
+- `internal/ui` (real adapters, driven with key presses):
+  - Explorer navigation, opening files, toggling and conditional breakpoints, the breakpoints pane, persistence across restarts and reopening the last file.
+  - Quick open and watch expressions.
+  - Rendering at small and large sizes.
+  - A Go session with F5, F8, Shift+F11, F9 and Shift+F5, and a Python session with `${file}`, F7, console evaluation and continue to exit.
+  - `preLaunchTask`/`postDebugTask`, `preLaunchTask`/`postDebugTask`, including a failing task that stops the launch.
+  - With debugpy: a `subProcess` child session that stops at a breakpoint in the child process.
+  - With debugpy: a full-screen program drawn in the Terminal tab that reads a raw arrow key, and a prompt and password prompt answered from the Terminal.
+  - With Delve: the memory view of a string.
+  - With Delve: the disassembly view, a single-instruction step and an instruction breakpoint.
+  - With Delve: a function breakpoint stops in the function, a logpoint with a hit count logs once on the third pass, and a data breakpoint on the loop counter stops when it changes.
 
-All targets, source mirrors, marker files, binaries, and logs are isolated under pytest temporary directories. TCP endpoints bind ephemeral loopback ports. Readiness requires target heartbeats and, for Python, an explicit listener marker, not a blind sleep. Startup, events, inspection, builds, and shutdown have deadlines. Cleanup sets the target's finish marker and reaps only fixture-owned process groups; it never signals a PID obtained from DAP.
+## Comparison with VS Code
 
-Missing executables/modules and recognized OS debugging restrictions produce explicit pytest skip reasons with the observed diagnostic. Unknown adapter errors, timeouts, compilation errors, and assertion failures fail rather than skip. A skip is not evidence that a scenario works.
+`tools/vscode-probe` drives VS Code 1.145 through each scenario in `internal/ui/testdata/vscode` with Delve or debugpy, logging every DAP message with VS Code's debug adapter tracker, and `TestRequestsMatchVSCode` replays the scenarios against dap-debugger. Comparing the two found these differences, all now matched:
 
-## Environment and evidence
+- `initialize` reports the same capabilities as VS Code: variable paging, progress reporting, memory events, `argsCanBeInterpretedByShell` and ANSI styling. Each is handled: progress shows in the status bar, memory events refresh the memory view, and shell-interpreted `runInTerminal` arguments run through the shell.
+- `setBreakpoints` sends the source name and the deprecated `lines` list.
+- Configuration sends empty function, instruction and data breakpoint lists when supported, which resets a reused debug server.
+- With `supportsDelayedStackTraceLoading`, the stack loads the top frame and then the rest of the first 20, with "Load more stack frames" for deeper stacks.
+- Stopping sends `terminate` before `disconnect` when the adapter supports it. `disconnect` sends `restart: false`, and `terminateDebuggee: false` when disconnecting from an attached program, only to adapters with `supportTerminateDebuggee`.
+- Restart uses the `restart` request when the adapter supports it (Delve), repeating the configuration when the adapter sends `initialized` again; otherwise it sends `terminate` with `restart: true` and starts a new session (debugpy).
 
-- Host: Darwin arm64.
-- Project virtual environment: CPython 3.13.2, debugpy 1.8.22, pytest 9.1.1, Textual 1.0.0.
-- Shell Python: 3.14.7; integration tests use the project virtual environment instead.
-- Go: go1.27.1 darwin/arm64.
-- Project-local Delve: 1.27.2, build `360e7b2181d3da54115aaee4f569954bca95cfe3`.
-- Direct Go fixture preflight: compilation exited 0; a real headless Delve process produced a target heartbeat.
-- Initial QA result: **5 passed, 1 failed, 0 skipped**. Python launch exposed the executable-symlink defect documented below.
-- After core fixes and expanded coverage, the parent ran `uv run pytest -q tests/test_cli.py tests/test_config.py tests/test_protocol.py tests/test_session.py tests/integration -ra`.
-- Verified result: **78 passed in 7.20s**, including **8 real-adapter tests with no skips**. Python launch, same-path/mapped running-target attach, Go `exec`/`debug`/`test` launch, same-path/mapped headless attach and reconnect all passed. No Darwin ptrace restriction was observed.
-- `.venv/bin/ruff check tests/integration` and `.venv/bin/ruff format --check tests/integration` both passed.
+Sessions are compared one by one, matched by name with digits ignored (a subprocess session is named after its process ID). Allowed differences: request order within a segment (both clients send some concurrently), extra `scopes` and `variables` requests on stops where VS Code's Variables view was not on screen, and the initial `threads` request, which a program that stops at once can overtake.
 
-### Fixed defects
+## Findings during manual QA
 
-Python launch loses the virtual environment. `SessionConfig.from_dict()` routes the Python executable through `_executable()` and `_local_path()`, whose `Path.resolve()` dereferences `.venv/bin/python` to the underlying CPython installation. That installation does not contain the project's debugpy dependency.
-
-The public session reports `initialize: unexpected EOF from debug adapter`; the queued adapter diagnostic is:
-
-```text
-/Users/simon/.local/share/uv/python/cpython-3.13.2-macos-aarch64-none/bin/python3.13: Error while finding module specification for 'debugpy.adapter' (ModuleNotFoundError: No module named 'debugpy')
-```
-
-Preserve executable symlinks while making explicit executable paths absolute relative to the configuration directory. This also affects the default `sys.executable`, not only explicit `python` settings. Do not install debugpy into the base interpreter to hide the defect.
-
-A separate diagnostic run restored `config.python = sys.executable` after parsing and passed the complete Python launch inspection/step/termination flow. This is supporting evidence, not an additional passing pytest case. The integration test retains normal configuration parsing. The core owner fixed executable normalization, and the normal launch test now passes. No production files were changed by the test owner.
-
-Expanded Go `debug` and `test` coverage found that Delve was building from the invoking shell's directory rather than the target module. The core owner corrected the owned Delve process working directory. Both modes now build, stop, inspect, step and exit successfully.
-
-Loopback attach does not verify SSH deployment, firewall traversal, remote authentication, independently launched PID attachment, or cross-platform behavior. Real-adapter step into and step out are outside this integration suite.
-
-## Toolchain mismatch regression
-
-Activating the user's mise environment reproduced six Go failures because its installed Delve 1.26.3 rejected Go 1.27.1. Earlier agent runs did not activate mise and instead selected the project-local Delve 1.27.2 fallback. The tests correctly failed instead of bypassing the adapter's compatibility check.
-
-The project keeps `go = "latest"` and pins Delve to 1.27.2. On 2026-10-27, the [official Go version endpoint](https://go.dev/VERSION?m=text) reported Go 1.27.3. [Delve 1.27.2's compatibility check](https://github.com/go-delve/delve/blob/v1.27.2/pkg/goversion/compat.go) supports Go 1.27. CI uses this verified pair.
-
-After installing the mise-managed tools, `mise exec -- uv run pytest` passed **96 tests with no skips** in 25.48 seconds using Go 1.27.3 and Delve 1.27.2. Type checking and Ruff also passed. No tests were skipped to hide the mismatch, and Go version checking remains enabled.
-
-## Final acceptance
-
-The complete suite passed with **96 tests, zero failures and zero skips** in 23.58 seconds using `uv run pytest -q -ra`. This includes eight session-level real-adapter cases, one real-debugpy headless UI case in `tests/integration/test_tui.py`, and two controlling-terminal cases in `tests/integration/test_terminal.py`. The headless UI case drives source inspection, explicit evaluation, breakpoint removal, step over, continue and quit through Textual controls.
-
-Headless UI tests also cover thread/frame selection, lazy variable expansion, delayed inspection responses, literal adapter text, breakpoint relocation/rejection, narrow layouts, live events while Help is open, startup errors and cleanup. Independent review identified a failed-step recovery race and an expression-input shortcut conflict. Both were reproduced with failing tests and fixed; the regressions now pass.
-
-A subsequent real-terminal report exposed a gap in headless testing: debugpy's launcher gave its target ownership of the TUI's controlling terminal, causing zsh to suspend the debugger with `SIGTTIN` on input. Owned adapters now start in separate sessions. The new Python and Go pseudo-terminal tests verify foreground ownership and successful input after launch. The original zsh/uv reproduction also passed with focus-out, mouse motion, F1 help and Ctrl+Q shutdown.
-
-`uv run ruff check .`, `git diff --check` and `uv build` passed. Build artifacts are `dist/dap_debugger-0.1.0-py3-none-any.whl` and `dist/dap_debugger-0.1.0.tar.gz`. Linux CI is configured but was not executed in this local session.
+- Probing a `debugpy --listen` port by connecting and immediately closing uses up its listener, so a later attach hangs. Tests wait for program output instead.
+- Half-closing a TCP connection to debugpy also stops it from accepting new clients, so the session only half-closes connections to adapters it started. Half-closing an owned adapter's stdin lets it exit cleanly instead of printing a broken-pipe traceback.

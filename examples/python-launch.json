@@ -1,15 +1,14 @@
 {
-  "name": "Python hello",
-  "adapter": "python",
-  "request": "launch",
-  "arguments": {
-    "program": "hello.py",
-    "cwd": ".",
-    "justMyCode": true
-  },
-  "breakpoints": {
-    "hello.py": [
-      7
-    ]
-  }
+  // Launch hello.py under debugpy: dap-debugger examples/python-launch.json
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python hello",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/hello.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
 }

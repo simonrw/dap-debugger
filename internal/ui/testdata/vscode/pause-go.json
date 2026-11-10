@@ -1,0 +1,51 @@
+{
+ "config": {
+  "mode": "debug",
+  "name": "Go loop",
+  "program": "${workspaceFolder}/../internal/session/testdata/loop",
+  "request": "launch",
+  "stopOnEntry": true,
+  "type": "go"
+ },
+ "steps": [
+  "continueThenPause",
+  "stop"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setFunctionBreakpoints []",
+    "setInstructionBreakpoints 0",
+    "setExceptionBreakpoints [runtime-fatal-throw, unrecovered-panic]",
+    "setDataBreakpoints 0",
+    "configurationDone"
+   ],
+   [
+    "threads",
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "continue",
+    "pause"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "stackTrace",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

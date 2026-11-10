@@ -10,27 +10,22 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          enable-cache: true
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.27.3"
-          cache: false
-      - name: Install dependencies
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install debug adapters
         run: |
-          uv sync --locked
           go install github.com/go-delve/delve/cmd/dlv@v1.27.2
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - name: Lint
-        run: uv run ruff check .
-      - name: Type check
-        run: uv run ty check .
+          python -m pip install debugpy
+      - name: Format
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
       - name: Test
-        run: uv run pytest -q -ra -n auto
+        run: go test -race ./...

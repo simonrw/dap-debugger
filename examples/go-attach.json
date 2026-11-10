@@ -1,17 +1,17 @@
 {
-  "name": "Go TCP attach",
-  "adapter": "go",
-  "request": "attach",
-  "connect": {
-    "host": "127.0.0.1",
-    "port": 38697
-  },
-  "arguments": {
-    "mode": "remote"
-  },
-  "breakpoints": {
-    "go/main.go": [
-      10
-    ]
-  }
+  // Attach to the Go example running under a headless Delve. Start it first with:
+  //   (cd examples/go && go build -gcflags='all=-N -l' -o /tmp/dap-hello .)
+  //   dlv exec /tmp/dap-hello --headless --listen=127.0.0.1:38697 --accept-multiclient
+  // then run: dap-debugger examples/go-attach.json
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Go TCP attach",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "127.0.0.1",
+      "port": 38697
+    }
+  ]
 }

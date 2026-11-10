@@ -1,0 +1,45 @@
+{
+  // Example configurations for dap-debugger. The same file works in VS Code.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: hello.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/hello.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: attach to localhost:5678",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "127.0.0.1", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}", "remoteRoot": "${workspaceFolder}" }
+      ]
+    },
+    {
+      "name": "Go: hello",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/go"
+    },
+    {
+      "name": "Go: attach to headless Delve on localhost:38697",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "127.0.0.1",
+      "port": 38697,
+    },
+  ],
+}

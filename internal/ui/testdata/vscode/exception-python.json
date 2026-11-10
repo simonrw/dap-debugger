@@ -1,0 +1,36 @@
+{
+ "config": {
+  "console": "internalConsole",
+  "justMyCode": true,
+  "name": "Python",
+  "program": "${workspaceFolder}/../internal/session/testdata/raise.py",
+  "request": "launch",
+  "type": "debugpy"
+ },
+ "steps": [
+  "continue"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setFunctionBreakpoints []",
+    "setExceptionBreakpoints [uncaught]",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "threads",
+    "exceptionInfo",
+    "stackTrace",
+    "continue",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

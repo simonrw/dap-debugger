@@ -1,15 +1,13 @@
 {
-  "name": "Go hello",
-  "adapter": "go",
-  "request": "launch",
-  "arguments": {
-    "program": "go",
-    "cwd": "go",
-    "mode": "debug"
-  },
-  "breakpoints": {
-    "go/main.go": [
-      10
-    ]
-  }
+  // Build and launch the Go example under Delve: dap-debugger examples/go-launch.json
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Go hello",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/go"
+    }
+  ]
 }

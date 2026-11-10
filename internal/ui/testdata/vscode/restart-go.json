@@ -1,0 +1,60 @@
+{
+ "config": {
+  "mode": "debug",
+  "name": "Go",
+  "program": "${workspaceFolder}/go",
+  "request": "launch",
+  "type": "go"
+ },
+ "breakpoints": [
+  {
+   "file": "go/main.go",
+   "line": 10
+  }
+ ],
+ "steps": [
+  "restart",
+  "stop"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setBreakpoints main.go [10]",
+    "setFunctionBreakpoints []",
+    "setInstructionBreakpoints 0",
+    "setExceptionBreakpoints [runtime-fatal-throw, unrecovered-panic]",
+    "setDataBreakpoints 0",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "stackTrace",
+    "restart"
+   ],
+   [
+    "setBreakpoints main.go [10]",
+    "setFunctionBreakpoints []",
+    "setInstructionBreakpoints 0",
+    "setExceptionBreakpoints [runtime-fatal-throw, unrecovered-panic]",
+    "setDataBreakpoints 0",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "variables",
+    "stackTrace",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

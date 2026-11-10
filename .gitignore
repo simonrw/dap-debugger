@@ -1,8 +1,8 @@
+/dap-debugger
 .venv/
 .tools/
 __pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-dist/
-*.egg-info/
+# The example workspace ships a VS Code launch.json.
+!/examples/.vscode/
+# Delve builds these next to the program and removes them when it exits cleanly.
+__debug_bin*

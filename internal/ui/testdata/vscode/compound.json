@@ -1,0 +1,60 @@
+{
+ "configs": [
+  {
+   "mode": "debug",
+   "name": "Go",
+   "program": "${workspaceFolder}/go",
+   "request": "launch",
+   "type": "go"
+  },
+  {
+   "console": "internalConsole",
+   "justMyCode": true,
+   "name": "Python",
+   "program": "${workspaceFolder}/hello.py",
+   "request": "launch",
+   "stopOnEntry": true,
+   "type": "debugpy"
+  }
+ ],
+ "steps": [
+  "continue"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setFunctionBreakpoints []",
+    "setInstructionBreakpoints 0",
+    "setExceptionBreakpoints [runtime-fatal-throw, unrecovered-panic]",
+    "setDataBreakpoints 0",
+    "configurationDone",
+    "threads",
+    "disconnect restart=false"
+   ]
+  ],
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setFunctionBreakpoints []",
+    "setExceptionBreakpoints [uncaught]",
+    "configurationDone",
+    "threads",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "continue",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

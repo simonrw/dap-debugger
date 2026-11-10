@@ -1,17 +1,15 @@
 {
-  "name": "Python TCP attach",
-  "adapter": "python",
-  "request": "attach",
-  "connect": {
-    "host": "127.0.0.1",
-    "port": 5678
-  },
-  "arguments": {
-    "justMyCode": true
-  },
-  "breakpoints": {
-    "hello.py": [
-      7
-    ]
-  }
+  // Attach to hello.py running under debugpy. Start it first with:
+  //   python -m debugpy --listen 127.0.0.1:5678 --wait-for-client examples/hello.py
+  // then run: dap-debugger examples/python-attach.json
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python TCP attach",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "127.0.0.1", "port": 5678 },
+      "justMyCode": true
+    }
+  ]
 }

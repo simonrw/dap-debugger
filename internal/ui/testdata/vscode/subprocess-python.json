@@ -1,0 +1,59 @@
+{
+ "config": {
+  "console": "internalConsole",
+  "justMyCode": true,
+  "name": "Parent",
+  "program": "${workspaceFolder}/../internal/session/testdata/parent.py",
+  "request": "launch",
+  "subProcess": true,
+  "type": "debugpy"
+ },
+ "breakpoints": [
+  {
+   "file": "../internal/session/testdata/child.py",
+   "line": 4
+  }
+ ],
+ "steps": [
+  "continue"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setBreakpoints child.py [4]",
+    "setFunctionBreakpoints []",
+    "setExceptionBreakpoints [uncaught]",
+    "configurationDone",
+    "threads",
+    "threads",
+    "disconnect restart=false"
+   ]
+  ],
+  [
+   [
+    "initialize",
+    "attach"
+   ],
+   [
+    "setBreakpoints child.py [4]",
+    "setFunctionBreakpoints []",
+    "setExceptionBreakpoints [uncaught]",
+    "configurationDone",
+    "threads",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "stackTrace",
+    "continue",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

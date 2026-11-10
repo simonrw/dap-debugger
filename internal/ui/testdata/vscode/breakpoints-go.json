@@ -1,0 +1,93 @@
+{
+ "config": {
+  "mode": "debug",
+  "name": "Go",
+  "program": "${workspaceFolder}/go",
+  "request": "launch",
+  "type": "go"
+ },
+ "breakpoints": [
+  {
+   "condition": "name == \"debugger 2\"",
+   "file": "go/main.go",
+   "line": 10
+  },
+  {
+   "file": "go/main.go",
+   "line": 17,
+   "logMessage": "logged {greeting}"
+  },
+  {
+   "file": "go/main.go",
+   "hitCondition": "4",
+   "line": 18
+  }
+ ],
+ "functionBreakpoints": [
+  {
+   "name": "main.greet"
+  }
+ ],
+ "steps": [
+  "stepInto",
+  "stepOut",
+  "continue",
+  "continue",
+  "continue",
+  "stop"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "launch"
+   ],
+   [
+    "setBreakpoints main.go [10 condition=name == \"debugger 2\", 17 logMessage=logged {greeting}, 18 hitCondition=4]",
+    "setFunctionBreakpoints [main.greet]",
+    "setInstructionBreakpoints 0",
+    "setExceptionBreakpoints [runtime-fatal-throw, unrecovered-panic]",
+    "setDataBreakpoints 0",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "stepIn"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "stepOut"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "continue"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "continue"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "stackTrace",
+    "continue"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "stackTrace",
+    "disconnect restart=false"
+   ]
+  ]
+ ]
+}

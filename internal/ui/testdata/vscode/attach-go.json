@@ -1,0 +1,59 @@
+{
+ "server": {
+  "command": "cd ../internal/session/testdata/loop && go build -gcflags='all=-N -l' -o \"$PROBE_TMP/loop\" . && exec dlv exec \"$PROBE_TMP/loop\" --headless --listen=127.0.0.1:{port} --accept-multiclient --continue",
+  "ready": "tick 2"
+ },
+ "config": {
+  "host": "127.0.0.1",
+  "mode": "remote",
+  "name": "Go attach",
+  "port": "{port}",
+  "request": "attach",
+  "type": "go"
+ },
+ "vscode": {
+  "debugServer": "{port}"
+ },
+ "breakpoints": [
+  {
+   "file": "../internal/session/testdata/loop/main.go",
+   "line": 11
+  }
+ ],
+ "steps": [
+  "continue",
+  "stop"
+ ],
+ "recorded": [
+  [
+   [
+    "initialize",
+    "attach"
+   ],
+   [
+    "setBreakpoints main.go [11]",
+    "setFunctionBreakpoints []",
+    "setInstructionBreakpoints 0",
+    "setExceptionBreakpoints [runtime-fatal-throw, unrecovered-panic]",
+    "setDataBreakpoints 0",
+    "configurationDone",
+    "threads"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "stackTrace",
+    "continue"
+   ],
+   [
+    "threads",
+    "stackTrace",
+    "scopes",
+    "variables",
+    "stackTrace",
+    "disconnect restart=false terminateDebuggee=false"
+   ]
+  ]
+ ]
+}
