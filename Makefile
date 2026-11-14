@@ -1,5 +1,5 @@
 .PHONY: test
 
 test:
-	uv sync
+	uv sync --locked
 	go test -race ./...
