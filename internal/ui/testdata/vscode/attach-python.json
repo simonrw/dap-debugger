@@ -1,6 +1,6 @@
 {
  "server": {
-  "command": "exec '{python}' -m debugpy --listen 127.0.0.1:{port} ../internal/session/testdata/loop.py",
+  "command": "exec \"$VIRTUAL_ENV/bin/python\" -m debugpy --listen 127.0.0.1:{port} ../internal/session/testdata/loop.py",
   "ready": "tick 2"
  },
  "config": {

@@ -425,9 +425,6 @@ func TestRequestsMatchVSCode(t *testing.T) {
 				t.Fatal(err)
 			}
 			text := strings.ReplaceAll(string(data), "{port}", strconv.Itoa(freePort(t)))
-			if strings.Contains(text, "{python}") {
-				text = strings.ReplaceAll(text, "{python}", daptest.Python(t))
-			}
 			if err := json.Unmarshal([]byte(text), &sc); err != nil {
 				t.Fatal(err)
 			}

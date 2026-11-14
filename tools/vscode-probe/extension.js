@@ -12,7 +12,9 @@
 //                        continue, continueThenPause, restart or stop
 //   server               {command, ready}: a shell command started first, in
 //                        the workspace, whose output matches ready once it
-//                        is listening (for attach scenarios)
+//                        is listening (for attach scenarios); it runs with
+//                        VIRTUAL_ENV (the repository's .venv) and PROBE_TMP
+//                        (a temporary directory) set
 // "{port}" anywhere in a scenario is replaced with a free port.
 const vscode = require("vscode");
 const fs = require("fs");
@@ -81,7 +83,7 @@ async function activate(context) {
     createDebugAdapterDescriptor(session) {
       const connect = session.configuration.connect;
       if (connect) return new vscode.DebugAdapterServer(connect.port, connect.host || "127.0.0.1");
-      return new vscode.DebugAdapterExecutable(process.env.PROBE_PYTHON, ["-m", "debugpy.adapter"]);
+      return new vscode.DebugAdapterExecutable(path.join(process.env.VIRTUAL_ENV, "bin", "python"), ["-m", "debugpy.adapter"]);
     },
   };
   context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory("probe-python", python));

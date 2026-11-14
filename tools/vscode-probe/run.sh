@@ -23,9 +23,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# debugpy and scenario servers run with the repository's .venv.
+export VIRTUAL_ENV=$repo/.venv
+if ! "$VIRTUAL_ENV/bin/python" -c "import debugpy" 2>/dev/null; then
+  echo "$VIRTUAL_ENV/bin/python cannot import debugpy; run 'uv sync' to create it" >&2
+  exit 1
+fi
+
 code=${VSCODE:-"/Applications/Visual Studio Code.app/Contents/MacOS/Code"}
 PROBE_OUT=$out PROBE_SCRIPT=$script PROBE_DLV=$(command -v dlv) \
-PROBE_PYTHON=$repo/.venv/bin/python \
   "$code" --user-data-dir "$profile" --extensions-dir "$profile/ext" \
   --extensionDevelopmentPath="$here" --new-window --disable-workspace-trust \
   --skip-welcome --skip-release-notes "$repo/examples" >/dev/null 2>&1 &
