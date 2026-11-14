@@ -41,7 +41,7 @@ func startTarget(t *testing.T, args ...string) {
 	}
 	cmd.Stdout, cmd.Stderr = log, log
 	if err := cmd.Start(); err != nil {
-		t.Skipf("cannot start %s: %v", args[0], err)
+		t.Fatalf("cannot start %s: %v", args[0], err)
 	}
 	t.Cleanup(func() {
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
@@ -125,7 +125,7 @@ func attachAndBreak(t *testing.T, cfg launch.Config, source string, line int) {
 }
 
 func TestPythonAttach(t *testing.T) {
-	python := daptest.Python(t)
+	python := daptest.UseAdapter(t, "debugpy")
 	port := freePort(t)
 	script, _ := filepath.Abs(filepath.Join("testdata", "loop.py"))
 	startTarget(t, python, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port), script)
@@ -137,10 +137,7 @@ func TestPythonAttach(t *testing.T) {
 }
 
 func TestGoAttach(t *testing.T) {
-	dlv, err := exec.LookPath("dlv")
-	if err != nil {
-		t.Skip("dlv not installed")
-	}
+	dlv := daptest.UseAdapter(t, "go")
 	port := freePort(t)
 	dir, _ := filepath.Abs(filepath.Join("testdata", "loop"))
 	binary := filepath.Join(t.TempDir(), "loop")

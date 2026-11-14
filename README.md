@@ -254,13 +254,13 @@ mise install
 mise exec -- make test
 ```
 
-Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets. debugpy comes from the `.venv` that `make test` creates with `uv sync`, and Delve tests skip when `dlv` is not installed. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
+Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets. debugpy comes from the `.venv` that `make test` creates with `uv sync`, and Delve tests skip when `dlv` is not installed. `daptest.UseAdapter` sets both up; Python tests fail if the `.venv` is missing or if `examples/.venv` or `examples/venv` exists, as either would replace it. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
 
 | Package | Responsibility |
 | --- | --- |
 | `internal/dap` | Message framing and a client that matches responses to requests |
 | `internal/launch` | `launch.json` and `tasks.json` parsing, variables, adapter definitions and plans |
-| `internal/daptest` | A fake debug adapter for tests |
+| `internal/daptest` | A fake debug adapter for tests, and setup of real adapters for integration tests |
 | `internal/session` | Adapter processes, the initialization handshake, breakpoints, shutdown |
 | `internal/state` | Persisted breakpoints, watches and settings |
 | `internal/ui` | The Bubble Tea interface |

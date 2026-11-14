@@ -101,14 +101,12 @@ func (r *recorder) drain() string {
 
 func prepare(t *testing.T, cfg launch.Config) *launch.Plan {
 	t.Helper()
-	if cfg.String("type") == "debugpy" {
-		daptest.Python(t)
-	}
+	daptest.UseAdapter(t, cfg.String("type"))
 
 	ws := examples(t)
 	plan, err := launch.Prepare(cfg, launch.Vars{Workspace: ws, Env: os.Getenv})
 	if err != nil {
-		t.Skipf("adapter unavailable: %v", err)
+		t.Fatalf("prepare: %v", err)
 	}
 	return plan
 }

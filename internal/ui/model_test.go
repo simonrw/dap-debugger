@@ -3,7 +3,6 @@ package ui
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -264,9 +263,7 @@ func TestRendersAtSmallSizes(t *testing.T) {
 
 // TestDebugGoProgram drives a real Delve session with the user's VS Code keys.
 func TestDebugGoProgram(t *testing.T) {
-	if _, err := exec.LookPath("dlv"); err != nil {
-		t.Skip("dlv not installed")
-	}
+	daptest.UseAdapter(t, "go")
 	ws := examplesDir(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
@@ -299,7 +296,7 @@ func TestDebugGoProgram(t *testing.T) {
 func TestDebugPythonProgram(t *testing.T) {
 	ws := examplesDir(t)
 	hello := filepath.Join(ws, "hello.py")
-	daptest.Python(t)
+	daptest.UseAdapter(t, "debugpy")
 	d := newDriver(t, newModel(t, ws, []launch.Config{pythonConfig}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.m.openFile(hello, 13)
@@ -339,9 +336,7 @@ func TestDebugPythonProgram(t *testing.T) {
 
 // TestFunctionBreakpointsAndLogpoints uses VS Code's other breakpoint kinds with Delve.
 func TestFunctionBreakpointsAndLogpoints(t *testing.T) {
-	if _, err := exec.LookPath("dlv"); err != nil {
-		t.Skip("dlv not installed")
-	}
+	daptest.UseAdapter(t, "go")
 	ws := examplesDir(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
@@ -400,7 +395,7 @@ func TestProgramInput(t *testing.T) {
 	ws := examplesDir(t)
 	echo, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "echo.py"))
 	cfg := launch.Config{"name": "Echo", "type": "debugpy", "request": "launch", "program": echo, "console": "integratedTerminal"}
-	daptest.Python(t)
+	daptest.UseAdapter(t, "debugpy")
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.key("f5")
@@ -457,7 +452,7 @@ func TestPreLaunchAndPostDebugTasks(t *testing.T) {
 	good := launch.Config{"name": "Good", "type": "debugpy", "request": "launch", "program": program,
 		"preLaunchTask": "build", "postDebugTask": "cleanup"}
 	bad := launch.Config{"name": "Bad", "type": "debugpy", "request": "launch", "program": program, "preLaunchTask": "broken"}
-	daptest.Python(t)
+	daptest.UseAdapter(t, "debugpy")
 
 	d := newDriver(t, newModel(t, ws, []launch.Config{bad, good}, filepath.Join(t.TempDir(), "s.json")))
 	console := func() string {
@@ -487,9 +482,7 @@ func TestPreLaunchAndPostDebugTasks(t *testing.T) {
 
 // TestDataBreakpoint breaks when a variable changes, with Delve.
 func TestDataBreakpoint(t *testing.T) {
-	if _, err := exec.LookPath("dlv"); err != nil {
-		t.Skip("dlv not installed")
-	}
+	daptest.UseAdapter(t, "go")
 	ws := examplesDir(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
@@ -690,7 +683,7 @@ func TestPythonSubprocessSession(t *testing.T) {
 	parent, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "parent.py"))
 	child, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "child.py"))
 	cfg := launch.Config{"name": "Parent", "type": "debugpy", "request": "launch", "program": parent, "subProcess": true, "console": "internalConsole"}
-	daptest.Python(t)
+	daptest.UseAdapter(t, "debugpy")
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.m.openFile(child, 4)
@@ -718,9 +711,7 @@ func TestPythonSubprocessSession(t *testing.T) {
 // TestDisassembly shows Delve's disassembly, steps by instruction and stops
 // at an instruction breakpoint.
 func TestDisassembly(t *testing.T) {
-	if _, err := exec.LookPath("dlv"); err != nil {
-		t.Skip("dlv not installed")
-	}
+	daptest.UseAdapter(t, "go")
 	ws := examplesDir(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
@@ -804,7 +795,7 @@ func TestFullScreenProgram(t *testing.T) {
 	ws := examplesDir(t)
 	screen, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "screen.py"))
 	cfg := launch.Config{"name": "Screen", "type": "debugpy", "request": "launch", "program": screen, "console": "integratedTerminal"}
-	daptest.Python(t)
+	daptest.UseAdapter(t, "debugpy")
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.key("f5")
@@ -867,9 +858,7 @@ func TestMemoryViewAndBreakpointHints(t *testing.T) {
 
 // TestMemoryViewWithDelve opens the memory behind a Go string.
 func TestMemoryViewWithDelve(t *testing.T) {
-	if _, err := exec.LookPath("dlv"); err != nil {
-		t.Skip("dlv not installed")
-	}
+	daptest.UseAdapter(t, "go")
 	ws := examplesDir(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}

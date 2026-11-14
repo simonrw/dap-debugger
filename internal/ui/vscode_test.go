@@ -433,13 +433,7 @@ func TestRequestsMatchVSCode(t *testing.T) {
 				if c == nil {
 					continue
 				}
-				if c.String("type") == "go" {
-					if _, err := exec.LookPath("dlv"); err != nil {
-						t.Skip("dlv not installed")
-					}
-				} else if c.String("type") == "debugpy" {
-					daptest.Python(t)
-				}
+				daptest.UseAdapter(t, c.String("type"))
 			}
 
 			if *updateVSCode {
