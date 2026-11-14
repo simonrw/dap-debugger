@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/simonrw/dap-debugger/internal/daptest"
 	"github.com/simonrw/dap-debugger/internal/launch"
 	"github.com/simonrw/dap-debugger/internal/state"
 )
@@ -266,9 +267,6 @@ func recordVSCode(t *testing.T, path string) [][][]string {
 	if dlv, err := exec.LookPath("dlv"); err == nil {
 		cmd.Env = append(cmd.Env, "PATH="+filepath.Dir(dlv)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	}
-	if venv, _ := filepath.Abs(filepath.Join("..", "..", ".venv", "bin", "python")); fileExists(venv) {
-		cmd.Env = append(cmd.Env, "PROBE_PYTHON="+venv)
-	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("probe: %v\n%s", err, output)
 	}
@@ -426,8 +424,11 @@ func TestRequestsMatchVSCode(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			port := strconv.Itoa(freePort(t))
-			if err := json.Unmarshal([]byte(strings.ReplaceAll(string(data), "{port}", port)), &sc); err != nil {
+			text := strings.ReplaceAll(string(data), "{port}", strconv.Itoa(freePort(t)))
+			if strings.Contains(text, "{python}") {
+				text = strings.ReplaceAll(text, "{python}", daptest.Python(t))
+			}
+			if err := json.Unmarshal([]byte(text), &sc); err != nil {
 				t.Fatal(err)
 			}
 
@@ -439,8 +440,8 @@ func TestRequestsMatchVSCode(t *testing.T) {
 					if _, err := exec.LookPath("dlv"); err != nil {
 						t.Skip("dlv not installed")
 					}
-				} else if _, err := launch.Prepare(c, launch.Vars{Workspace: ws}); err != nil {
-					t.Skipf("adapter unavailable: %v", err)
+				} else if c.String("type") == "debugpy" {
+					daptest.Python(t)
 				}
 			}
 

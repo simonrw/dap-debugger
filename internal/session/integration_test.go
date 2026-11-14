@@ -12,6 +12,7 @@ import (
 
 	godap "github.com/google/go-dap"
 
+	"github.com/simonrw/dap-debugger/internal/daptest"
 	"github.com/simonrw/dap-debugger/internal/launch"
 	"github.com/simonrw/dap-debugger/internal/session"
 )
@@ -100,6 +101,10 @@ func (r *recorder) drain() string {
 
 func prepare(t *testing.T, cfg launch.Config) *launch.Plan {
 	t.Helper()
+	if cfg.String("type") == "debugpy" {
+		daptest.Python(t)
+	}
+
 	ws := examples(t)
 	plan, err := launch.Prepare(cfg, launch.Vars{Workspace: ws, Env: os.Getenv})
 	if err != nil {

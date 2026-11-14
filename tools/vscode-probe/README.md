@@ -4,7 +4,7 @@ A throwaway VS Code extension that records the Debug Adapter Protocol messages V
 
 ```sh
 tools/vscode-probe/run.sh go /tmp/vscode-go.json
-PROBE_PYTHON=.venv/bin/python tools/vscode-probe/run.sh python /tmp/vscode-python.json
+tools/vscode-probe/run.sh python /tmp/vscode-python.json
 ```
 
-It opens a VS Code window with a temporary profile, which is removed afterwards. The requests between the `initialized` and `stopped` events are kept in `internal/ui/testdata/vscode-*.json`, and `TestRequestsMatchVSCode` checks that dap-debugger sends the same ones. Compare dap-debugger's own messages with `dap-debugger --trace FILE`.
+debugpy runs from the repository's `.venv`, created by `uv sync`. It opens a VS Code window with a temporary profile, which is removed afterwards. The requests between the `initialized` and `stopped` events are kept in `internal/ui/testdata/vscode-*.json`, and `TestRequestsMatchVSCode` checks that dap-debugger sends the same ones. Compare dap-debugger's own messages with `dap-debugger --trace FILE`.

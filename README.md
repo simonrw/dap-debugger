@@ -251,10 +251,10 @@ Re-record with `go test ./internal/ui -run RequestsMatchVSCode -update-vscode`, 
 
 ```sh
 mise install
-mise exec -- go test -race ./...
+mise exec -- make test
 ```
 
-Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets, and skip when an adapter is unavailable. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
+Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets. debugpy comes from the `.venv` that `make test` creates with `uv sync`, and Delve tests skip when `dlv` is not installed. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
 
 | Package | Responsibility |
 | --- | --- |

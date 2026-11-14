@@ -15,17 +15,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install debug adapters
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Delve
         run: |
           go install github.com/go-delve/delve/cmd/dlv@v1.27.2
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          python -m pip install debugpy
       - name: Format
         run: test -z "$(gofmt -l .)"
       - name: Vet
         run: go vet ./...
       - name: Test
-        run: go test -race ./...
+        run: make test

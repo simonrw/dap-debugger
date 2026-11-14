@@ -299,9 +299,7 @@ func TestDebugGoProgram(t *testing.T) {
 func TestDebugPythonProgram(t *testing.T) {
 	ws := examplesDir(t)
 	hello := filepath.Join(ws, "hello.py")
-	if _, err := launch.Prepare(pythonConfig, launch.Vars{Workspace: ws, File: hello}); err != nil {
-		t.Skipf("debugpy unavailable: %v", err)
-	}
+	daptest.Python(t)
 	d := newDriver(t, newModel(t, ws, []launch.Config{pythonConfig}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.m.openFile(hello, 13)
@@ -402,9 +400,7 @@ func TestProgramInput(t *testing.T) {
 	ws := examplesDir(t)
 	echo, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "echo.py"))
 	cfg := launch.Config{"name": "Echo", "type": "debugpy", "request": "launch", "program": echo, "console": "integratedTerminal"}
-	if _, err := launch.Prepare(cfg, launch.Vars{Workspace: ws}); err != nil {
-		t.Skipf("debugpy unavailable: %v", err)
-	}
+	daptest.Python(t)
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.key("f5")
@@ -461,9 +457,7 @@ func TestPreLaunchAndPostDebugTasks(t *testing.T) {
 	good := launch.Config{"name": "Good", "type": "debugpy", "request": "launch", "program": program,
 		"preLaunchTask": "build", "postDebugTask": "cleanup"}
 	bad := launch.Config{"name": "Bad", "type": "debugpy", "request": "launch", "program": program, "preLaunchTask": "broken"}
-	if _, err := launch.Prepare(good, launch.Vars{Workspace: ws}); err != nil {
-		t.Skipf("debugpy unavailable: %v", err)
-	}
+	daptest.Python(t)
 
 	d := newDriver(t, newModel(t, ws, []launch.Config{bad, good}, filepath.Join(t.TempDir(), "s.json")))
 	console := func() string {
@@ -696,9 +690,7 @@ func TestPythonSubprocessSession(t *testing.T) {
 	parent, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "parent.py"))
 	child, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "child.py"))
 	cfg := launch.Config{"name": "Parent", "type": "debugpy", "request": "launch", "program": parent, "subProcess": true, "console": "internalConsole"}
-	if _, err := launch.Prepare(cfg, launch.Vars{Workspace: ws}); err != nil {
-		t.Skipf("debugpy unavailable: %v", err)
-	}
+	daptest.Python(t)
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.m.openFile(child, 4)
@@ -812,9 +804,7 @@ func TestFullScreenProgram(t *testing.T) {
 	ws := examplesDir(t)
 	screen, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "screen.py"))
 	cfg := launch.Config{"name": "Screen", "type": "debugpy", "request": "launch", "program": screen, "console": "integratedTerminal"}
-	if _, err := launch.Prepare(cfg, launch.Vars{Workspace: ws}); err != nil {
-		t.Skipf("debugpy unavailable: %v", err)
-	}
+	daptest.Python(t)
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
 
 	d.key("f5")

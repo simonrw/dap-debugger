@@ -1,4 +1,5 @@
 [tools]
 prek = "latest"
 go = "latest"
+uv = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = "1.27.2"

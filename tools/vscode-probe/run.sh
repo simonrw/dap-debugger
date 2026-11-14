@@ -25,7 +25,7 @@ trap cleanup EXIT
 
 code=${VSCODE:-"/Applications/Visual Studio Code.app/Contents/MacOS/Code"}
 PROBE_OUT=$out PROBE_SCRIPT=$script PROBE_DLV=$(command -v dlv) \
-PROBE_PYTHON=${PROBE_PYTHON:-$(command -v python3)} \
+PROBE_PYTHON=$repo/.venv/bin/python \
   "$code" --user-data-dir "$profile" --extensions-dir "$profile/ext" \
   --extensionDevelopmentPath="$here" --new-window --disable-workspace-trust \
   --skip-welcome --skip-release-notes "$repo/examples" >/dev/null 2>&1 &

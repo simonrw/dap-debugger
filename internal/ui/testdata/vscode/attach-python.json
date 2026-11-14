@@ -1,6 +1,6 @@
 {
  "server": {
-  "command": "PY=python3; [ -x ../.venv/bin/python ] && PY=../.venv/bin/python; exec $PY -m debugpy --listen 127.0.0.1:{port} ../internal/session/testdata/loop.py",
+  "command": "exec '{python}' -m debugpy --listen 127.0.0.1:{port} ../internal/session/testdata/loop.py",
   "ready": "tick 2"
  },
  "config": {

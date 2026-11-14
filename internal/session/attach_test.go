@@ -14,6 +14,7 @@ import (
 
 	godap "github.com/google/go-dap"
 
+	"github.com/simonrw/dap-debugger/internal/daptest"
 	"github.com/simonrw/dap-debugger/internal/launch"
 	"github.com/simonrw/dap-debugger/internal/session"
 )
@@ -70,21 +71,6 @@ func startTarget(t *testing.T, args ...string) {
 	t.Fatalf("target did not start:\n%s", data)
 }
 
-func pythonWithDebugpy(t *testing.T) []string {
-	t.Helper()
-	root := filepath.Dir(examples(t))
-	for _, python := range []string{filepath.Join(root, ".venv", "bin", "python"), "python3"} {
-		if launch.HasDebugpy(python) {
-			return []string{python}
-		}
-	}
-	if _, err := exec.LookPath("uv"); err == nil {
-		return []string{"uv", "run", "--quiet", "--no-project", "--with", "debugpy", "python"}
-	}
-	t.Skip("debugpy not available")
-	return nil
-}
-
 // attachAndBreak attaches to a running target, sets a breakpoint while it runs
 // and checks the target stops there, then detaches and checks it keeps running.
 func attachAndBreak(t *testing.T, cfg launch.Config, source string, line int) {
@@ -139,10 +125,10 @@ func attachAndBreak(t *testing.T, cfg launch.Config, source string, line int) {
 }
 
 func TestPythonAttach(t *testing.T) {
-	python := pythonWithDebugpy(t)
+	python := daptest.Python(t)
 	port := freePort(t)
 	script, _ := filepath.Abs(filepath.Join("testdata", "loop.py"))
-	startTarget(t, append(python, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port), script)...)
+	startTarget(t, python, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port), script)
 
 	attachAndBreak(t, launch.Config{
 		"name": "py", "type": "debugpy", "request": "attach",

@@ -4,10 +4,10 @@
 
 ```sh
 mise install
-mise exec -- go test -race ./...
+mise exec -- make test
 ```
 
-Delve must be on `PATH` (mise installs a version compatible with the pinned Go). debugpy is taken from `.venv/bin/python` or `python3` if installed there, otherwise from a throwaway `uv` environment. Tests skip with a reason when an adapter is unavailable. A skip is not evidence that a scenario works.
+Delve must be on `PATH` (mise installs a version compatible with the pinned Go). debugpy comes from the repository's `.venv`, which `make test` creates with `uv sync` from `uv.lock`; Python tests fail if it is missing. Tests skip with a reason when Delve is unavailable. A skip is not evidence that a scenario works.
 
 ## Coverage
 

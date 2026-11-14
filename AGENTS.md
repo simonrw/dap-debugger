@@ -5,4 +5,5 @@ A general-purpose terminal debugger for any Debug Adapter Protocol adapter, writ
 ## Tooling
 
 * I use mise so if a required tool does not work, try `mise exec -- <command>`
-* Run the tests with `mise exec -- go test -race ./...`; integration tests use real debugpy and Delve
+* Run the tests with `mise exec -- make test`; integration tests use real debugpy and Delve
+* Do not install debugpy into the mise Python. The tests use the repo `.venv` created by `uv sync` from `uv.lock`, which `make test` runs; Python tests fail if it is missing
