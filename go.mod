@@ -12,7 +12,6 @@ require (
 	github.com/charmbracelet/x/vt v0.1.0
 	github.com/creack/pty v1.1.24
 	github.com/google/go-dap v0.12.0
-	github.com/sahilm/fuzzy v0.1.3
 )
 
 require (

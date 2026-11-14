@@ -5,7 +5,8 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"github.com/sahilm/fuzzy"
+
+	"github.com/simonrw/dap-debugger/internal/fzf"
 )
 
 // modal is a dialog drawn over the main view that takes all keyboard input.
@@ -80,9 +81,7 @@ func (md *modal) filter() {
 			md.filtered = append(md.filtered, i)
 		}
 	case md.fuzzyFilter:
-		for _, match := range fuzzy.Find(query, md.items) {
-			md.filtered = append(md.filtered, match.Index)
-		}
+		md.filtered = append(md.filtered, fzf.Filter(query, md.items)...)
 	default:
 		q := strings.ToLower(query)
 		for i, item := range md.items {
