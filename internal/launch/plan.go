@@ -66,8 +66,8 @@ var clientOnly = []string{
 	"preLaunchTask", "postDebugTask", "osx", "linux", "windows",
 }
 
-// HasDebugpy reports whether a Python interpreter can import debugpy.
-var HasDebugpy = func(python string) bool {
+// hasDebugpy reports whether a Python interpreter can import debugpy.
+var hasDebugpy = func(python string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return exec.CommandContext(ctx, python, "-c", "import debugpy").Run() == nil
@@ -249,7 +249,7 @@ func debugpyAdapter(explicit, workspace, interpreter string) ([]string, error) {
 	candidates = append(candidates, "python3", "python")
 
 	for _, c := range candidates {
-		if HasDebugpy(c) {
+		if hasDebugpy(c) {
 			return []string{c, "-m", "debugpy.adapter"}, nil
 		}
 	}

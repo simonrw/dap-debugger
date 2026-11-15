@@ -13,7 +13,7 @@
 //   - "connect": connect to the address given as the first argument
 //
 // UseAdapter sets up a real adapter, debugpy or Delve, for integration tests,
-// and Examples returns the workspace they run in.
+// and Examples returns the repository's examples workspace.
 package daptest
 
 import (

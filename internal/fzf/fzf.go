@@ -287,9 +287,9 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 	m.h = grow(m.h, n*plen)
 	m.c = grow(m.c, n*plen)
 
-	// First row, the per-character bonuses, the earliest position each
-	// pattern character can take, and the last position the final pattern
-	// character can take.
+	// One pass over the text fills in the first row, the per-character
+	// bonuses, the earliest position each pattern character can take, and
+	// the last position the final pattern character can take.
 	best, bestCol := 0, 0
 	pidx, last := 0, 0
 	prevH := 0
@@ -367,8 +367,9 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 					}
 				}
 
-				// When even the chunk bonus loses to the gap path, this
-				// match starts no chunk.
+				// The gap path wins this cell, so no consecutive run
+				// continues through it. Adding the bonus keeps upstream
+				// fzf's shape and cannot change the result.
 				if matchScore+bonus < gapScore {
 					matchScore += m.bonus[col]
 					consecutive = 0
