@@ -66,8 +66,8 @@ var clientOnly = []string{
 	"preLaunchTask", "postDebugTask", "osx", "linux", "windows",
 }
 
-// HasDebugpy reports whether a Python interpreter can import debugpy.
-var HasDebugpy = func(python string) bool {
+// hasDebugpy reports whether a Python interpreter can import debugpy.
+var hasDebugpy = func(python string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return exec.CommandContext(ctx, python, "-c", "import debugpy").Run() == nil
@@ -249,7 +249,7 @@ func debugpyAdapter(explicit, workspace, interpreter string) ([]string, error) {
 	candidates = append(candidates, "python3", "python")
 
 	for _, c := range candidates {
-		if HasDebugpy(c) {
+		if hasDebugpy(c) {
 			return []string{c, "-m", "debugpy.adapter"}, nil
 		}
 	}
@@ -323,8 +323,12 @@ func prepareGo(plan *Plan, cfg Config, workspace string) error {
 		plan.Dir = workspace
 	}
 
-	dlv, err := findDlv(cfg.String("dlvToolPath"), workspace)
-	if err != nil {
+	dlv := cfg.String("dlvToolPath")
+	if dlv != "" {
+		dlv = resolveExecutable(workspace, dlv)
+	} else if found, err := FindDlv(); err == nil {
+		dlv = found
+	} else {
 		return fmt.Errorf("configuration %q: %w", plan.Name, err)
 	}
 
@@ -340,10 +344,9 @@ func prepareGo(plan *Plan, cfg Config, workspace string) error {
 	return nil
 }
 
-func findDlv(explicit, workspace string) (string, error) {
-	if explicit != "" {
-		return resolveExecutable(workspace, explicit), nil
-	}
+// FindDlv returns the dlv a go configuration without dlvToolPath uses: the
+// one on PATH, else in $GOBIN, $GOPATH/bin or ~/go/bin.
+func FindDlv() (string, error) {
 	if path, err := exec.LookPath("dlv"); err == nil {
 		return path, nil
 	}

@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/simonrw/dap-debugger/internal/daptest"
 	"github.com/simonrw/dap-debugger/internal/launch"
 	"github.com/simonrw/dap-debugger/internal/state"
 )
@@ -262,13 +263,6 @@ func recordVSCode(t *testing.T, path string) [][][]string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), "vscode.json")
 	cmd := exec.Command(filepath.Join("..", "..", "tools", "vscode-probe", "run.sh"), path, out)
-	cmd.Env = os.Environ()
-	if dlv, err := exec.LookPath("dlv"); err == nil {
-		cmd.Env = append(cmd.Env, "PATH="+filepath.Dir(dlv)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	}
-	if venv, _ := filepath.Abs(filepath.Join("..", "..", ".venv", "bin", "python")); fileExists(venv) {
-		cmd.Env = append(cmd.Env, "PROBE_PYTHON="+venv)
-	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("probe: %v\n%s", err, output)
 	}
@@ -412,7 +406,7 @@ func runScenario(t *testing.T, ws string, sc scenario) []traceEntry {
 // where VS Code's Variables view was not on screen. The threads request after
 // configurationDone is not compared, as a quick stop can overtake it.
 func TestRequestsMatchVSCode(t *testing.T) {
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	files, _ := filepath.Glob(filepath.Join("testdata", "vscode", "*.json"))
 	if len(files) == 0 {
 		t.Fatal("no scenarios")
@@ -426,22 +420,17 @@ func TestRequestsMatchVSCode(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			port := strconv.Itoa(freePort(t))
-			if err := json.Unmarshal([]byte(strings.ReplaceAll(string(data), "{port}", port)), &sc); err != nil {
+			text := strings.ReplaceAll(string(data), "{port}", strconv.Itoa(freePort(t)))
+			if err := json.Unmarshal([]byte(text), &sc); err != nil {
 				t.Fatal(err)
 			}
 
+			// Scenario server commands run $VIRTUAL_ENV/bin/python or dlv from PATH, which UseAdapter sets.
 			for _, c := range append([]launch.Config{sc.Config}, sc.Configs...) {
 				if c == nil {
 					continue
 				}
-				if c.String("type") == "go" {
-					if _, err := exec.LookPath("dlv"); err != nil {
-						t.Skip("dlv not installed")
-					}
-				} else if _, err := launch.Prepare(c, launch.Vars{Workspace: ws}); err != nil {
-					t.Skipf("adapter unavailable: %v", err)
-				}
+				daptest.UseAdapter(t, c.String("type"))
 			}
 
 			if *updateVSCode {
@@ -474,9 +463,10 @@ func compareSegments(t *testing.T, session int, ours, recorded [][]string) {
 			return (c == "variables" || c == "scopes") && !slices.Contains(want, c)
 		})
 		want = distinct(want)
-		// Both clients fetch threads after configurationDone, but a program
-		// that stops at once can stop before the request is sent.
-		if i == 1 {
+		// Both clients fetch threads after configurationDone, on the first
+		// launch and after a restart, but a program that stops at once can
+		// stop before the request is sent.
+		if slices.Contains(want, "configurationDone") {
 			got = slices.DeleteFunc(got, func(c string) bool { return c == "threads" })
 			want = slices.DeleteFunc(want, func(c string) bool { return c == "threads" })
 		}

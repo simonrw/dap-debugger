@@ -23,9 +23,22 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# VS Code merges the login shell's environment over ours, so the probe gets
+# the .venv and dlv under names the shell does not set.
+export PROBE_VENV=$repo/.venv
+if ! "$PROBE_VENV/bin/python" -c "import debugpy" 2>/dev/null; then
+  echo "$PROBE_VENV/bin/python cannot import debugpy; run 'uv sync' to create it" >&2
+  exit 1
+fi
+PROBE_DLV=${PROBE_DLV:-$(command -v dlv || true)}
+if [ -z "$PROBE_DLV" ] && grep -Eq '"type": *"go"' "$script"; then
+  echo "dlv not found; put it on PATH or set PROBE_DLV" >&2
+  exit 1
+fi
+export PROBE_DLV
+
 code=${VSCODE:-"/Applications/Visual Studio Code.app/Contents/MacOS/Code"}
-PROBE_OUT=$out PROBE_SCRIPT=$script PROBE_DLV=$(command -v dlv) \
-PROBE_PYTHON=${PROBE_PYTHON:-$(command -v python3)} \
+PROBE_OUT=$out PROBE_SCRIPT=$script \
   "$code" --user-data-dir "$profile" --extensions-dir "$profile/ext" \
   --extensionDevelopmentPath="$here" --new-window --disable-workspace-trust \
   --skip-welcome --skip-release-notes "$repo/examples" >/dev/null 2>&1 &

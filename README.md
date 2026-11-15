@@ -142,7 +142,7 @@ python -m debugpy --listen 127.0.0.1:5678 app.py
 
 ### Go (`go`)
 
-Launch starts `dlv dap` (from `dlvToolPath`, `PATH` or `~/go/bin`) with `mode` set to `debug`, `test`, `exec` or `auto`. Extra `dlvFlags` are passed to Delve. With `console` set to `integratedTerminal` or `externalTerminal`, the program runs in the Terminal tab. Attach with `"mode": "remote"` connects to a headless Delve server at `host`/`port`; `"mode": "local"` with a numeric `processId` attaches Delve to a local process.
+Launch starts `dlv dap` (from `dlvToolPath`, `PATH`, `$GOBIN`, `$GOPATH/bin` or `~/go/bin`) with `mode` set to `debug`, `test`, `exec` or `auto`. Extra `dlvFlags` are passed to Delve. With `console` set to `integratedTerminal` or `externalTerminal`, the program runs in the Terminal tab. Attach with `"mode": "remote"` connects to a headless Delve server at `host`/`port`; `"mode": "local"` with a numeric `processId` attaches Delve to a local process.
 
 ```sh
 dlv exec ./app --headless --listen=127.0.0.1:38697 --accept-multiclient --continue
@@ -251,16 +251,17 @@ Re-record with `go test ./internal/ui -run RequestsMatchVSCode -update-vscode`, 
 
 ```sh
 mise install
-mise exec -- go test -race ./...
+mise exec -- make test
 ```
 
-Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets, and skip when an adapter is unavailable. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
+Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets; [QA notes](docs/qa.md) say where each comes from. See also [adapter research](docs/research.md).
 
 | Package | Responsibility |
 | --- | --- |
 | `internal/dap` | Message framing and a client that matches responses to requests |
+| `internal/fzf` | fzf's fuzzy matching and path-scheme ranking, used by the file picker |
 | `internal/launch` | `launch.json` and `tasks.json` parsing, variables, adapter definitions and plans |
-| `internal/daptest` | A fake debug adapter for tests |
+| `internal/daptest` | A fake debug adapter for tests, and setup of real adapters for integration tests |
 | `internal/session` | Adapter processes, the initialization handshake, breakpoints, shutdown |
 | `internal/state` | Persisted breakpoints, watches and settings |
 | `internal/ui` | The Bubble Tea interface |

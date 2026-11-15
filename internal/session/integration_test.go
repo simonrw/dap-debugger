@@ -5,26 +5,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	godap "github.com/google/go-dap"
 
+	"github.com/simonrw/dap-debugger/internal/daptest"
 	"github.com/simonrw/dap-debugger/internal/launch"
 	"github.com/simonrw/dap-debugger/internal/session"
 )
-
-func examples(t *testing.T) string {
-	t.Helper()
-	_, file, _, _ := runtime.Caller(0)
-	dir, err := filepath.Abs(filepath.Join(filepath.Dir(file), "..", "..", "examples"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir
-}
 
 // recorder collects events from a session in the background.
 type recorder struct {
@@ -100,10 +90,12 @@ func (r *recorder) drain() string {
 
 func prepare(t *testing.T, cfg launch.Config) *launch.Plan {
 	t.Helper()
-	ws := examples(t)
+	daptest.UseAdapter(t, cfg.String("type"))
+
+	ws := daptest.Examples(t)
 	plan, err := launch.Prepare(cfg, launch.Vars{Workspace: ws, Env: os.Getenv})
 	if err != nil {
-		t.Skipf("adapter unavailable: %v", err)
+		t.Fatalf("prepare: %v", err)
 	}
 	return plan
 }
@@ -200,7 +192,7 @@ func exercise(t *testing.T, plan *launch.Plan, source string, line int, local st
 }
 
 func TestPythonLaunch(t *testing.T) {
-	ws := examples(t)
+	ws := daptest.Examples(t)
 	plan := prepare(t, launch.Config{
 		"name": "py", "type": "debugpy", "request": "launch", "program": "${workspaceFolder}/hello.py",
 	})
@@ -211,7 +203,7 @@ func TestGoLaunch(t *testing.T) {
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skip("go not installed")
 	}
-	ws := examples(t)
+	ws := daptest.Examples(t)
 	plan := prepare(t, launch.Config{
 		"name": "go", "type": "go", "request": "launch", "mode": "debug", "program": "${workspaceFolder}/go",
 	})
@@ -220,7 +212,7 @@ func TestGoLaunch(t *testing.T) {
 
 // TestStopWhilePaused disconnects from a paused launch, as Shift+F5 does.
 func TestStopWhilePaused(t *testing.T) {
-	ws := examples(t)
+	ws := daptest.Examples(t)
 	for _, cfg := range []launch.Config{
 		{"name": "py", "type": "debugpy", "request": "launch", "program": "${workspaceFolder}/hello.py"},
 		{"name": "go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"},

@@ -1,7 +1,6 @@
 package launch
 
 import (
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -9,7 +8,7 @@ import (
 // TestExamples loads every example launch file and prepares each configuration.
 func TestExamples(t *testing.T) {
 	stubDebugpy(t, func(string) bool { return true })
-	_, dlvErr := exec.LookPath("dlv")
+	_, dlvErr := FindDlv()
 
 	files, _ := filepath.Glob(filepath.Join("..", "..", "examples", "*.json"))
 	files = append(files, filepath.Join("..", "..", "examples", ".vscode", "launch.json"))

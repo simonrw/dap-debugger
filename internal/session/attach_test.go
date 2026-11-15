@@ -14,6 +14,7 @@ import (
 
 	godap "github.com/google/go-dap"
 
+	"github.com/simonrw/dap-debugger/internal/daptest"
 	"github.com/simonrw/dap-debugger/internal/launch"
 	"github.com/simonrw/dap-debugger/internal/session"
 )
@@ -40,7 +41,7 @@ func startTarget(t *testing.T, args ...string) {
 	}
 	cmd.Stdout, cmd.Stderr = log, log
 	if err := cmd.Start(); err != nil {
-		t.Skipf("cannot start %s: %v", args[0], err)
+		t.Fatalf("cannot start %s: %v", args[0], err)
 	}
 	t.Cleanup(func() {
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
@@ -68,21 +69,6 @@ func startTarget(t *testing.T, args ...string) {
 	}
 	data, _ := os.ReadFile(log.Name())
 	t.Fatalf("target did not start:\n%s", data)
-}
-
-func pythonWithDebugpy(t *testing.T) []string {
-	t.Helper()
-	root := filepath.Dir(examples(t))
-	for _, python := range []string{filepath.Join(root, ".venv", "bin", "python"), "python3"} {
-		if launch.HasDebugpy(python) {
-			return []string{python}
-		}
-	}
-	if _, err := exec.LookPath("uv"); err == nil {
-		return []string{"uv", "run", "--quiet", "--no-project", "--with", "debugpy", "python"}
-	}
-	t.Skip("debugpy not available")
-	return nil
 }
 
 // attachAndBreak attaches to a running target, sets a breakpoint while it runs
@@ -139,10 +125,10 @@ func attachAndBreak(t *testing.T, cfg launch.Config, source string, line int) {
 }
 
 func TestPythonAttach(t *testing.T) {
-	python := pythonWithDebugpy(t)
+	python := daptest.UseAdapter(t, "debugpy")
 	port := freePort(t)
 	script, _ := filepath.Abs(filepath.Join("testdata", "loop.py"))
-	startTarget(t, append(python, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port), script)...)
+	startTarget(t, python, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port), script)
 
 	attachAndBreak(t, launch.Config{
 		"name": "py", "type": "debugpy", "request": "attach",
@@ -151,10 +137,7 @@ func TestPythonAttach(t *testing.T) {
 }
 
 func TestGoAttach(t *testing.T) {
-	dlv, err := exec.LookPath("dlv")
-	if err != nil {
-		t.Skip("dlv not installed")
-	}
+	dlv := daptest.UseAdapter(t, "go")
 	port := freePort(t)
 	dir, _ := filepath.Abs(filepath.Join("testdata", "loop"))
 	binary := filepath.Join(t.TempDir(), "loop")

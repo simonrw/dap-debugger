@@ -12,7 +12,10 @@
 //                        continue, continueThenPause, restart or stop
 //   server               {command, ready}: a shell command started first, in
 //                        the workspace, whose output matches ready once it
-//                        is listening (for attach scenarios)
+//                        is listening (for attach scenarios); it runs with
+//                        VIRTUAL_ENV set to the repository's .venv, the
+//                        directory of run.sh's dlv appended to PATH and
+//                        PROBE_TMP set to a temporary directory
 // "{port}" anywhere in a scenario is replaced with a free port.
 const vscode = require("vscode");
 const fs = require("fs");
@@ -21,6 +24,9 @@ const path = require("path");
 const cp = require("child_process");
 
 const out = process.env.PROBE_OUT;
+// run.sh passes the .venv as PROBE_VENV because the login shell's environment,
+// which VS Code merges over run.sh's, may set its own VIRTUAL_ENV or PYTHONPATH.
+const pythonEnv = { VIRTUAL_ENV: process.env.PROBE_VENV, PYTHONPATH: "", PYTHONHOME: "" };
 const log = [];
 const disposeOnFinish = [];
 let finished = false;
@@ -81,7 +87,7 @@ async function activate(context) {
     createDebugAdapterDescriptor(session) {
       const connect = session.configuration.connect;
       if (connect) return new vscode.DebugAdapterServer(connect.port, connect.host || "127.0.0.1");
-      return new vscode.DebugAdapterExecutable(process.env.PROBE_PYTHON, ["-m", "debugpy.adapter"]);
+      return new vscode.DebugAdapterExecutable(path.join(process.env.PROBE_VENV, "bin", "python"), ["-m", "debugpy.adapter"], { env: pythonEnv });
     },
   };
   context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory("probe-python", python));
@@ -135,9 +141,10 @@ async function activate(context) {
   ]);
 
   if (script.server) {
+    const env = { ...process.env, ...pythonEnv, PROBE_TMP: fs.mkdtempSync(path.join(require("os").tmpdir(), "probe-")) };
+    if (process.env.PROBE_DLV) env.PATH = env.PATH + path.delimiter + path.dirname(process.env.PROBE_DLV);
     const server = cp.spawn("/bin/sh", ["-c", script.server.command], {
-      cwd: folder.uri.fsPath, detached: true, stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, PROBE_TMP: fs.mkdtempSync(path.join(require("os").tmpdir(), "probe-")) },
+      cwd: folder.uri.fsPath, detached: true, stdio: ["ignore", "pipe", "pipe"], env,
     });
     const kill = () => { try { process.kill(-server.pid, "SIGKILL"); } catch (e) {} };
     disposeOnFinish.push(kill);

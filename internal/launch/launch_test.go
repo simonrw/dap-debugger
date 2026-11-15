@@ -123,9 +123,9 @@ func TestSubstituteErrors(t *testing.T) {
 
 func stubDebugpy(t *testing.T, available func(string) bool) {
 	t.Helper()
-	old := HasDebugpy
-	HasDebugpy = available
-	t.Cleanup(func() { HasDebugpy = old })
+	old := hasDebugpy
+	hasDebugpy = available
+	t.Cleanup(func() { hasDebugpy = old })
 }
 
 func TestPreparePythonLaunch(t *testing.T) {
