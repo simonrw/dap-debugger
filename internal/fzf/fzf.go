@@ -1,10 +1,13 @@
-// Package fzf ranks strings against a query using fzf's FuzzyMatchV2 scoring.
+// Package fzf ranks file paths against a query using fzf's FuzzyMatchV2
+// scoring with its path scheme (--scheme=path).
 package fzf
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 const (
@@ -17,13 +20,13 @@ const (
 	bonusCamel123            = bonusBoundary + scoreGapExtension
 	bonusConsecutive         = -(scoreGapStart + scoreGapExtension)
 	bonusFirstCharMultiplier = 2
-	bonusBoundaryWhite       = bonusBoundary + 2
+	bonusBoundaryWhite       = bonusBoundary
 	bonusBoundaryDelimiter   = bonusBoundary + 1
 )
 
 type charClass int
 
-// The order matters: everything after charNonWord can start a word.
+// The order matters: charNonWord and every class after it can start a word.
 const (
 	charWhite charClass = iota
 	charNonWord
@@ -44,7 +47,7 @@ func classOf(r rune) charClass {
 		return charNumber
 	case strings.ContainsRune(" \t\n\v\f\r", r):
 		return charWhite
-	case strings.ContainsRune("/,:;|", r):
+	case r == '/':
 		return charDelimiter
 	case r < unicode.MaxASCII:
 		return charNonWord
@@ -63,7 +66,7 @@ func classOf(r rune) charClass {
 }
 
 func bonusFor(prev, class charClass) int {
-	if class > charNonWord {
+	if class >= charNonWord {
 		switch prev {
 		case charWhite:
 			return bonusBoundaryWhite
@@ -89,13 +92,16 @@ func bonusFor(prev, class charClass) int {
 
 // Filter returns the indices of the items matching query, best match first.
 // The query is split on whitespace into terms that must all match. A term
-// matches case-insensitively unless it contains an uppercase letter.
+// matches case-insensitively unless lowercasing would change it. Ties in
+// score go to the item whose earliest term match starts closest after its
+// last path separator, then to the shorter item (ignoring surrounding
+// whitespace), then to the earlier item.
 func Filter(query string, items []string) []int {
 	var terms []term
 	for _, field := range strings.Fields(query) {
 		terms = append(terms, term{
 			pattern:       []rune(field),
-			caseSensitive: strings.ContainsFunc(field, unicode.IsUpper),
+			caseSensitive: strings.ToLower(field) != field,
 		})
 	}
 
@@ -108,29 +114,44 @@ func Filter(query string, items []string) []int {
 	}
 
 	type match struct {
-		index, score, length int
+		index, score, pathname, length int
 	}
 	var matches []match
 
 	var m matcher
+	var text []rune
 items:
 	for i, item := range items {
-		text := []rune(item)
+		text = text[:0]
+		for _, r := range item {
+			text = append(text, r)
+		}
 		total := 0
+		begin := len(text)
 
 		for _, t := range terms {
-			score, ok := m.score(text, t)
+			score, start, ok := m.match(text, t)
 			if !ok {
 				continue items
 			}
 			total += score
+			begin = min(begin, start)
 		}
-		matches = append(matches, match{index: i, score: total, length: len(text)})
+
+		matches = append(matches, match{
+			index:    i,
+			score:    total,
+			pathname: pathnameDistance(text, begin),
+			length:   utf8.RuneCountInString(strings.TrimSpace(item)),
+		})
 	}
 
 	slices.SortStableFunc(matches, func(a, b match) int {
 		if a.score != b.score {
 			return b.score - a.score
+		}
+		if a.pathname != b.pathname {
+			return a.pathname - b.pathname
 		}
 		return a.length - b.length
 	})
@@ -142,50 +163,91 @@ items:
 	return indices
 }
 
+// pathnameDistance returns how far past the last path separator a match
+// starting at begin lies, or math.MaxInt when it starts before it.
+func pathnameDistance(text []rune, begin int) int {
+	last := -1
+	for i, r := range slices.Backward(text) {
+		// fzf counts a backslash as a separator here on every platform
+		if r == '/' || r == '\\' {
+			last = i
+			break
+		}
+	}
+
+	if last > begin {
+		return math.MaxInt
+	}
+	return begin - last
+}
+
 type term struct {
 	pattern       []rune
 	caseSensitive bool
 }
 
+// in reports whether the term's characters appear in order in text.
+func (t term) in(text []rune) bool {
+	p := 0
+	for _, r := range text {
+		if !t.caseSensitive && classOf(r) == charUpper {
+			r = unicode.ToLower(r)
+		}
+		if r == t.pattern[p] {
+			p++
+			if p == len(t.pattern) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // matcher holds the scratch buffers reused across items.
 type matcher struct {
-	text   []rune
-	bonus  []int
-	first  []int
-	h, c   []int
-	h1, c1 []int
+	text  []rune
+	bonus []int
+	first []int
+	h, c  []int
 }
 
 func grow[T any](s []T, n int) []T {
 	return slices.Grow(s[:0], n)[:n]
 }
 
-// score returns the best alignment score of the term within text, and false
-// when the term's characters do not appear in order.
-func (m *matcher) score(text []rune, t term) (int, bool) {
+// match returns the best alignment score of the term within text and the
+// position where that alignment starts, or false when the term's characters
+// do not appear in order. Of equally scored alignments it picks the one
+// ending furthest right.
+func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 	pattern := t.pattern
 	n, plen := len(text), len(pattern)
-	if n < plen {
-		return 0, false
+	// Most items do not match, and rejecting them here skips filling the matrix
+	if n < plen || !t.in(text) {
+		return 0, 0, false
 	}
 
 	m.text = grow(m.text, n)
 	m.bonus = grow(m.bonus, n)
 	m.first = grow(m.first, plen)
-	m.h, m.c = grow(m.h, n), grow(m.c, n)
-	m.h1, m.c1 = grow(m.h1, n), grow(m.c1, n)
 
-	// First row of the score matrix, the per-character bonuses, and the
-	// earliest position each pattern character can take.
-	best := 0
-	pidx := 0
+	// h is the score matrix and c counts the consecutive matched characters
+	// ending at each cell, one row of n cells per pattern character.
+	m.h = grow(m.h, n*plen)
+	m.c = grow(m.c, n*plen)
+
+	// First row, the per-character bonuses, the earliest position each
+	// pattern character can take, and the last position the final pattern
+	// character takes.
+	best, bestCol := 0, 0
+	pidx, last := 0, 0
 	prevH := 0
-	prevClass := charWhite
+	prevClass := charDelimiter
 	inGap := false
 
 	for i, r := range text {
 		class := classOf(r)
-		if !t.caseSensitive {
+		if !t.caseSensitive && class == charUpper {
 			r = unicode.ToLower(r)
 		}
 		m.text[i] = r
@@ -194,9 +256,12 @@ func (m *matcher) score(text []rune, t term) (int, bool) {
 		m.bonus[i] = bonus
 		prevClass = class
 
-		if pidx < plen && r == pattern[pidx] {
-			m.first[pidx] = i
-			pidx++
+		if r == pattern[min(pidx, plen-1)] {
+			if pidx < plen {
+				m.first[pidx] = i
+				pidx++
+			}
+			last = i
 		}
 
 		if r == pattern[0] {
@@ -204,13 +269,8 @@ func (m *matcher) score(text []rune, t term) (int, bool) {
 			m.c[i] = 1
 			inGap = false
 
-			if plen == 1 && m.h[i] > best {
-				best = m.h[i]
-
-				// fzf settles for the first match on a word boundary
-				if bonus >= bonusBoundary {
-					return best, true
-				}
+			if plen == 1 && m.h[i] >= best {
+				best, bestCol = m.h[i], i
 			}
 		} else {
 			penalty := scoreGapStart
@@ -224,18 +284,16 @@ func (m *matcher) score(text []rune, t term) (int, bool) {
 		prevH = m.h[i]
 	}
 
-	if pidx != plen {
-		return 0, false
+	if plen == 1 {
+		return best, bestCol, true
 	}
 
-	// Remaining rows. h and c are the previous row, h1 and c1 the current
-	// one; c counts the consecutive matched characters ending at a cell.
 	for p := 1; p < plen; p++ {
-		start := m.first[p]
+		row, above := p*n, (p-1)*n
 		left := 0
 		inGap = false
 
-		for col := start; col < n; col++ {
+		for col := m.first[p]; col <= last; col++ {
 			gapScore := left + scoreGapStart
 			if inGap {
 				gapScore = left + scoreGapExtension
@@ -243,9 +301,9 @@ func (m *matcher) score(text []rune, t term) (int, bool) {
 
 			matchScore, consecutive := 0, 0
 			if pattern[p] == m.text[col] {
-				matchScore = m.h[col-1] + scoreMatch
+				matchScore = m.h[above+col-1] + scoreMatch
 				bonus := m.bonus[col]
-				consecutive = m.c[col-1] + 1
+				consecutive = m.c[above+col-1] + 1
 
 				if consecutive > 1 {
 					chunkBonus := m.bonus[col-consecutive+1]
@@ -268,17 +326,49 @@ func (m *matcher) score(text []rune, t term) (int, bool) {
 			inGap = matchScore < gapScore
 			left = max(matchScore, gapScore, 0)
 
-			m.h1[col] = left
-			m.c1[col] = consecutive
+			m.h[row+col] = left
+			m.c[row+col] = consecutive
 
-			if p == plen-1 && left > best {
-				best = left
+			if p == plen-1 && left >= best {
+				best, bestCol = left, col
 			}
 		}
-
-		m.h, m.h1 = m.h1, m.h
-		m.c, m.c1 = m.c1, m.c
 	}
 
-	return best, true
+	return best, m.start(plen, n, bestCol), true
+}
+
+// start walks the score matrix back from the best cell in the last row to the
+// position the first pattern character matched, as fzf's backtrace does.
+func (m *matcher) start(plen, n, col int) int {
+	p := plen - 1
+	preferMatch := true
+
+	for {
+		row := p * n
+		score := m.h[row+col]
+
+		diag, left := 0, 0
+		if p > 0 && col >= m.first[p] {
+			diag = m.h[row-n+col-1]
+		}
+		if col > m.first[p] {
+			left = m.h[row+col-1]
+		}
+
+		current := p
+		if score > diag && (score > left || score == left && preferMatch) {
+			if p == 0 {
+				return col
+			}
+			p--
+		}
+
+		// The next pattern character's row is only filled from its first
+		// possible match, so cells left of that hold values from earlier
+		// matches.
+		preferMatch = m.c[row+col] > 1 ||
+			current+1 < plen && col+1 >= m.first[current+1] && m.c[row+n+col+1] > 0
+		col--
+	}
 }
