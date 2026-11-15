@@ -75,14 +75,9 @@ func (md *modal) filter() {
 	query := md.input.Value()
 	md.filtered = md.filtered[:0]
 
-	switch {
-	case query == "":
-		for i := range md.items {
-			md.filtered = append(md.filtered, i)
-		}
-	case md.fuzzyFilter:
+	if md.fuzzyFilter {
 		md.filtered = append(md.filtered, fzf.Filter(query, md.items)...)
-	default:
+	} else {
 		q := strings.ToLower(query)
 		for i, item := range md.items {
 			if strings.Contains(strings.ToLower(item), q) {

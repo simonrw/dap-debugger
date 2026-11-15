@@ -259,6 +259,7 @@ Tests drive a built-in fake adapter (`internal/daptest`) over every transport, s
 | Package | Responsibility |
 | --- | --- |
 | `internal/dap` | Message framing and a client that matches responses to requests |
+| `internal/fzf` | fzf's fuzzy matching and path-scheme ranking, used by the file picker |
 | `internal/launch` | `launch.json` and `tasks.json` parsing, variables, adapter definitions and plans |
 | `internal/daptest` | A fake debug adapter for tests, and setup of real adapters for integration tests |
 | `internal/session` | Adapter processes, the initialization handshake, breakpoints, shutdown |

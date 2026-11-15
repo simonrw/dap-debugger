@@ -1,3 +1,42 @@
+// Ported from fzf (https://github.com/junegunn/fzf, version 0.75, commit
+// 4499615f): FuzzyMatchV2 and the path scheme from src/algo/algo.go, and the
+// query handling and tie-breaks from src/pattern.go and src/result.go.
+//
+// Not ported:
+//   - the extended query syntax (', ^, $, !, |)
+//   - accent normalisation
+//   - the FuzzyMatchV1 fallback for long inputs, so memory grows with item
+//     length times query length; picker items are file paths, so this stays
+//     small
+//   - the 65535 caps on scores and lengths
+//   - the backslash delimiter on Windows
+//   - fzf splits the query on spaces, with a backslash escaping a space; this
+//     splits on any whitespace
+//
+// fzf's licence:
+//
+// The MIT License (MIT)
+//
+// Copyright (c) 2013-2026 Junegunn Choi
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 // Package fzf ranks file paths against a query using fzf's FuzzyMatchV2
 // scoring with its path scheme (--scheme=path).
 package fzf
@@ -85,6 +124,8 @@ func bonusFor(prev, class charClass) int {
 	case charNonWord, charDelimiter:
 		return bonusNonWord
 	case charWhite:
+		// Terms never contain whitespace, so this bonus never scores; kept to
+		// match upstream.
 		return bonusBoundaryWhite
 	}
 	return 0
@@ -120,7 +161,7 @@ func Filter(query string, items []string) []int {
 
 	var m matcher
 	var text []rune
-items:
+nextItem:
 	for i, item := range items {
 		text = text[:0]
 		for _, r := range item {
@@ -132,7 +173,7 @@ items:
 		for _, t := range terms {
 			score, start, ok := m.match(text, t)
 			if !ok {
-				continue items
+				continue nextItem
 			}
 			total += score
 			begin = min(begin, start)
@@ -205,10 +246,15 @@ func (t term) in(text []rune) bool {
 
 // matcher holds the scratch buffers reused across items.
 type matcher struct {
-	text  []rune
+	// folded is the item's text, lowercased unless the term is case sensitive.
+	folded []rune
+	// bonus is the bonus for matching each character of the text.
 	bonus []int
+	// first is the earliest position each pattern character can match.
 	first []int
-	h, c  []int
+	// h is the score matrix and c counts the consecutive matched characters
+	// ending at each cell, one row of len(folded) cells per pattern character.
+	h, c []int
 }
 
 func grow[T any](s []T, n int) []T {
@@ -227,12 +273,9 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 		return 0, 0, false
 	}
 
-	m.text = grow(m.text, n)
+	m.folded = grow(m.folded, n)
 	m.bonus = grow(m.bonus, n)
 	m.first = grow(m.first, plen)
-
-	// h is the score matrix and c counts the consecutive matched characters
-	// ending at each cell, one row of n cells per pattern character.
 	m.h = grow(m.h, n*plen)
 	m.c = grow(m.c, n*plen)
 
@@ -250,7 +293,7 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 		if !t.caseSensitive && class == charUpper {
 			r = unicode.ToLower(r)
 		}
-		m.text[i] = r
+		m.folded[i] = r
 
 		bonus := bonusFor(prevClass, class)
 		m.bonus[i] = bonus
@@ -273,6 +316,9 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 				best, bestCol = m.h[i], i
 			}
 		} else {
+			// Carry an earlier first-character match's score rightwards, less
+			// the gap penalties, so the next row can extend it from a later
+			// column.
 			penalty := scoreGapStart
 			if inGap {
 				penalty = scoreGapExtension
@@ -300,7 +346,7 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 			}
 
 			matchScore, consecutive := 0, 0
-			if pattern[p] == m.text[col] {
+			if pattern[p] == m.folded[col] {
 				matchScore = m.h[above+col-1] + scoreMatch
 				bonus := m.bonus[col]
 				consecutive = m.c[above+col-1] + 1
