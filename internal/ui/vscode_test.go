@@ -463,9 +463,10 @@ func compareSegments(t *testing.T, session int, ours, recorded [][]string) {
 			return (c == "variables" || c == "scopes") && !slices.Contains(want, c)
 		})
 		want = distinct(want)
-		// Both clients fetch threads after configurationDone, but a program
-		// that stops at once can stop before the request is sent.
-		if i == 1 {
+		// Both clients fetch threads after configurationDone, on the first
+		// launch and after a restart, but a program that stops at once can
+		// stop before the request is sent.
+		if slices.Contains(want, "configurationDone") {
 			got = slices.DeleteFunc(got, func(c string) bool { return c == "threads" })
 			want = slices.DeleteFunc(want, func(c string) bool { return c == "threads" })
 		}
