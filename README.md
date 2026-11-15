@@ -142,7 +142,7 @@ python -m debugpy --listen 127.0.0.1:5678 app.py
 
 ### Go (`go`)
 
-Launch starts `dlv dap` (from `dlvToolPath`, `PATH` or `~/go/bin`) with `mode` set to `debug`, `test`, `exec` or `auto`. Extra `dlvFlags` are passed to Delve. With `console` set to `integratedTerminal` or `externalTerminal`, the program runs in the Terminal tab. Attach with `"mode": "remote"` connects to a headless Delve server at `host`/`port`; `"mode": "local"` with a numeric `processId` attaches Delve to a local process.
+Launch starts `dlv dap` (from `dlvToolPath`, `PATH`, `$GOBIN`, `$GOPATH/bin` or `~/go/bin`) with `mode` set to `debug`, `test`, `exec` or `auto`. Extra `dlvFlags` are passed to Delve. With `console` set to `integratedTerminal` or `externalTerminal`, the program runs in the Terminal tab. Attach with `"mode": "remote"` connects to a headless Delve server at `host`/`port`; `"mode": "local"` with a numeric `processId` attaches Delve to a local process.
 
 ```sh
 dlv exec ./app --headless --listen=127.0.0.1:38697 --accept-multiclient --continue
@@ -254,7 +254,7 @@ mise install
 mise exec -- make test
 ```
 
-Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets. debugpy comes from the `.venv` that `make test` creates with `uv sync`, and Delve tests skip when `dlv` is not installed. `daptest.UseAdapter` sets both up; Python tests fail if the `.venv` is missing or if `examples/.venv` or `examples/venv` exists, as either would replace it. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
+Tests drive a built-in fake adapter (`internal/daptest`) over every transport, so the client is tested against the protocol alone. Integration tests also launch and attach to real debugpy and Delve targets. debugpy comes from the `.venv` that `make test` creates with `uv sync`, and Delve tests skip when `dlv` is not installed. `daptest.UseAdapter` sets both up, and fails Python tests unless launch would run the adapter and the program with that `.venv`. See [QA notes](docs/qa.md) and [adapter research](docs/research.md).
 
 | Package | Responsibility |
 | --- | --- |

@@ -264,7 +264,7 @@ func recordVSCode(t *testing.T, path string) [][][]string {
 	out := filepath.Join(t.TempDir(), "vscode.json")
 	cmd := exec.Command(filepath.Join("..", "..", "tools", "vscode-probe", "run.sh"), path, out)
 	cmd.Env = os.Environ()
-	if dlv, err := exec.LookPath("dlv"); err == nil {
+	if dlv, err := launch.FindDlv(); err == nil {
 		cmd.Env = append(cmd.Env, "PATH="+filepath.Dir(dlv)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	}
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -410,7 +410,7 @@ func runScenario(t *testing.T, ws string, sc scenario) []traceEntry {
 // where VS Code's Variables view was not on screen. The threads request after
 // configurationDone is not compared, as a quick stop can overtake it.
 func TestRequestsMatchVSCode(t *testing.T) {
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	files, _ := filepath.Glob(filepath.Join("testdata", "vscode", "*.json"))
 	if len(files) == 0 {
 		t.Fatal("no scenarios")
@@ -429,6 +429,7 @@ func TestRequestsMatchVSCode(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			// Scenario server commands, such as attach-python's, run $VIRTUAL_ENV/bin/python, which UseAdapter sets.
 			for _, c := range append([]launch.Config{sc.Config}, sc.Configs...) {
 				if c == nil {
 					continue

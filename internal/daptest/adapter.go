@@ -3,40 +3,43 @@ package daptest
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
+
+	"github.com/simonrw/dap-debugger/internal/launch"
 )
 
 // UseAdapter makes the real adapter for a configuration type available for
 // the rest of the test and returns its executable.
 //
-// For "debugpy" it activates the repository's .venv, which `uv sync` builds
-// with debugpy, by setting VIRTUAL_ENV, and returns its interpreter. The
-// launch package prefers a workspace .venv or venv over VIRTUAL_ENV, so the
-// test fails if the examples workspace has one, as it does if the repository
-// .venv is missing.
+// For "debugpy" or "python" it activates the repository's .venv, which
+// `uv sync` builds from uv.lock, by setting VIRTUAL_ENV and clearing
+// PYTHONPATH and PYTHONHOME. It returns the .venv interpreter, and fails the
+// test unless launch would run both the adapter and the debuggee of a
+// configuration in Examples with it.
 //
-// For "go" it returns the dlv on PATH and skips the test when there is none.
+// For "go" it returns the dlv that launch would use, and skips the test when
+// there is none.
 func UseAdapter(t testing.TB, typ string) string {
 	t.Helper()
 
 	switch typ {
-	case "debugpy":
-		_, file, _, _ := runtime.Caller(0)
-		root := filepath.Join(filepath.Dir(file), "..", "..")
-		python, err := venvPython(root)
-		if err != nil {
+	case "debugpy", "python":
+		venv := filepath.Join(repoRoot(t), ".venv")
+		t.Setenv("VIRTUAL_ENV", venv)
+		t.Setenv("PYTHONPATH", "")
+		t.Setenv("PYTHONHOME", "")
+
+		python := filepath.Join(venv, "bin", "python")
+		if err := checkPython(python, Examples(t)); err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("VIRTUAL_ENV", filepath.Dir(filepath.Dir(python)))
 		return python
 
 	case "go":
-		dlv, err := exec.LookPath("dlv")
+		dlv, err := launch.FindDlv()
 		if err != nil {
-			t.Skip("dlv not installed")
+			t.Skip(err)
 		}
 		return dlv
 	}
@@ -45,19 +48,51 @@ func UseAdapter(t testing.TB, typ string) string {
 	return ""
 }
 
-// venvPython returns the interpreter of the .venv under root, after checking
-// it can import debugpy and no venv in root/examples would take its place.
-func venvPython(root string) (string, error) {
-	for _, name := range []string{".venv", "venv"} {
-		stray := filepath.Join(root, "examples", name)
-		if _, err := os.Stat(filepath.Join(stray, "bin", "python")); err == nil {
-			return "", fmt.Errorf("%s would replace the repository .venv as the debuggee's interpreter; remove it", stray)
-		}
+// Examples returns the repository's examples workspace.
+func Examples(t testing.TB) string {
+	t.Helper()
+	return filepath.Join(repoRoot(t), "examples")
+}
+
+// checkPython returns an error unless launch would run a debugpy launch
+// configuration in workspace with python as both adapter and debuggee
+// interpreter.
+func checkPython(python, workspace string) error {
+	cfg := launch.Config{"name": "daptest", "type": "debugpy", "request": "launch", "program": "hello.py"}
+	plan, err := launch.Prepare(cfg, launch.Vars{Workspace: workspace, Env: os.Getenv})
+	if err != nil {
+		return fmt.Errorf("%v; run 'make test' or 'uv sync' to create %s", err, python)
 	}
 
-	python := filepath.Join(root, ".venv", "bin", "python")
-	if err := exec.Command(python, "-c", "import debugpy").Run(); err != nil {
-		return "", fmt.Errorf("%s cannot import debugpy (%v); run 'make test' or 'uv sync' to create it", python, err)
+	adapter := plan.Command[0]
+	// debugpy runs the program with the adapter's interpreter unless python is set
+	program := adapter
+	if p, ok := plan.Arguments["python"].(string); ok {
+		program = p
 	}
-	return python, nil
+	if adapter != python || program != python {
+		return fmt.Errorf("launch would run the debugpy adapter with %s and the program with %s, not %s; run 'make test' or 'uv sync' to create it with debugpy, and remove any other virtual environment from %s", adapter, program, python, workspace)
+	}
+	return nil
+}
+
+// repoRoot returns the directory holding go.mod above the working directory,
+// which go test sets to the package under test.
+func repoRoot(t testing.TB) string {
+	t.Helper()
+
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("no go.mod above the working directory")
+		}
+		dir = parent
+	}
 }

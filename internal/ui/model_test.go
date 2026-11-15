@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -139,15 +138,6 @@ func (d *driver) programOutput() string {
 	return b.String()
 }
 
-func examplesDir(t *testing.T) string {
-	_, file, _, _ := runtime.Caller(0)
-	dir, err := filepath.Abs(filepath.Join(filepath.Dir(file), "..", "..", "examples"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir
-}
-
 func newModel(t *testing.T, workspace string, configs []launch.Config, statePath string) *Model {
 	t.Helper()
 	store, err := state.Open(statePath, workspace)
@@ -264,7 +254,7 @@ func TestRendersAtSmallSizes(t *testing.T) {
 // TestDebugGoProgram drives a real Delve session with the user's VS Code keys.
 func TestDebugGoProgram(t *testing.T) {
 	daptest.UseAdapter(t, "go")
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
@@ -294,7 +284,7 @@ func TestDebugGoProgram(t *testing.T) {
 
 // TestDebugPythonProgram drives debugpy, including ${file}, step into and the console.
 func TestDebugPythonProgram(t *testing.T) {
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	hello := filepath.Join(ws, "hello.py")
 	daptest.UseAdapter(t, "debugpy")
 	d := newDriver(t, newModel(t, ws, []launch.Config{pythonConfig}, filepath.Join(t.TempDir(), "s.json")))
@@ -337,7 +327,7 @@ func TestDebugPythonProgram(t *testing.T) {
 // TestFunctionBreakpointsAndLogpoints uses VS Code's other breakpoint kinds with Delve.
 func TestFunctionBreakpointsAndLogpoints(t *testing.T) {
 	daptest.UseAdapter(t, "go")
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
@@ -392,7 +382,7 @@ func TestFunctionBreakpointsAndLogpoints(t *testing.T) {
 
 // TestProgramInput answers a prompt from a program started in an integrated terminal.
 func TestProgramInput(t *testing.T) {
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	echo, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "echo.py"))
 	cfg := launch.Config{"name": "Echo", "type": "debugpy", "request": "launch", "program": echo, "console": "integratedTerminal"}
 	daptest.UseAdapter(t, "debugpy")
@@ -483,7 +473,7 @@ func TestPreLaunchAndPostDebugTasks(t *testing.T) {
 // TestDataBreakpoint breaks when a variable changes, with Delve.
 func TestDataBreakpoint(t *testing.T) {
 	daptest.UseAdapter(t, "go")
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
@@ -679,7 +669,7 @@ func TestCompoundAndChildSessions(t *testing.T) {
 
 // TestPythonSubprocessSession follows a Python subprocess into a child session.
 func TestPythonSubprocessSession(t *testing.T) {
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	parent, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "parent.py"))
 	child, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "child.py"))
 	cfg := launch.Config{"name": "Parent", "type": "debugpy", "request": "launch", "program": parent, "subProcess": true, "console": "internalConsole"}
@@ -712,7 +702,7 @@ func TestPythonSubprocessSession(t *testing.T) {
 // at an instruction breakpoint.
 func TestDisassembly(t *testing.T) {
 	daptest.UseAdapter(t, "go")
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
@@ -792,7 +782,7 @@ func TestInlineBreakpoint(t *testing.T) {
 // TestFullScreenProgram draws a full-screen program in the Terminal tab and
 // sends it an arrow key.
 func TestFullScreenProgram(t *testing.T) {
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	screen, _ := filepath.Abs(filepath.Join("..", "session", "testdata", "screen.py"))
 	cfg := launch.Config{"name": "Screen", "type": "debugpy", "request": "launch", "program": screen, "console": "integratedTerminal"}
 	daptest.UseAdapter(t, "debugpy")
@@ -859,7 +849,7 @@ func TestMemoryViewAndBreakpointHints(t *testing.T) {
 // TestMemoryViewWithDelve opens the memory behind a Go string.
 func TestMemoryViewWithDelve(t *testing.T) {
 	daptest.UseAdapter(t, "go")
-	ws := examplesDir(t)
+	ws := daptest.Examples(t)
 	main := filepath.Join(ws, "go", "main.go")
 	cfg := launch.Config{"name": "Go", "type": "go", "request": "launch", "program": "${workspaceFolder}/go"}
 	d := newDriver(t, newModel(t, ws, []launch.Config{cfg}, filepath.Join(t.TempDir(), "s.json")))
