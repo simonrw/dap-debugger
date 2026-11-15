@@ -7,7 +7,7 @@ mise install
 mise exec -- make test
 ```
 
-Delve tests use the `dlv` that a go configuration without `dlvToolPath` would (see the README); mise puts one compatible with the pinned Go on `PATH`. debugpy comes from the repository's `.venv`, which `make test` creates with `uv sync` from `uv.lock`; Python tests fail unless launch would run the adapter and the program with it. Tests skip with a reason when Delve is unavailable. A skip is not evidence that a scenario works.
+Delve tests use the `dlv` that a go configuration without `dlvToolPath` would (see the README), and append its directory to `PATH` for the commands they run, such as attach scenario servers; mise installs the pinned Delve version. They skip with a reason when there is no such `dlv`. A skip is not evidence that a scenario works. debugpy comes from the repository's `.venv`, which `make test` creates with `uv sync` from `uv.lock`; Python tests fail unless launch would run the adapter and the program with it.
 
 ## Coverage
 

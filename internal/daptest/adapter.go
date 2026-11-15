@@ -15,11 +15,12 @@ import (
 // For "debugpy" or "python" it activates the repository's .venv, which
 // `uv sync` builds from uv.lock, by setting VIRTUAL_ENV and clearing
 // PYTHONPATH and PYTHONHOME. It returns the .venv interpreter, and fails the
-// test unless launch would run both the adapter and the debuggee of a
-// configuration in Examples with it.
+// test unless launch.Prepare would run both the adapter and the debuggee of a
+// debugpy launch configuration in the Examples workspace with it.
 //
-// For "go" it returns the dlv that launch would use, and skips the test when
-// there is none.
+// For "go" it returns the dlv that launch would use and appends its directory
+// to PATH, so commands the test runs find a dlv even when launch found it
+// outside PATH. It skips the test when there is none.
 func UseAdapter(t testing.TB, typ string) string {
 	t.Helper()
 
@@ -41,6 +42,9 @@ func UseAdapter(t testing.TB, typ string) string {
 		if err != nil {
 			t.Skip(err)
 		}
+		// Appended rather than prepended so other tools in dlv's directory, such
+		// as a different go, do not shadow the ones already on PATH
+		t.Setenv("PATH", os.Getenv("PATH")+string(os.PathListSeparator)+filepath.Dir(dlv))
 		return dlv
 	}
 
@@ -58,10 +62,14 @@ func Examples(t testing.TB) string {
 // configuration in workspace with python as both adapter and debuggee
 // interpreter.
 func checkPython(python, workspace string) error {
+	if _, err := os.Stat(python); err != nil {
+		return fmt.Errorf("the repository's .venv is missing (%v); run 'make test' or 'uv sync' to create it", err)
+	}
+
 	cfg := launch.Config{"name": "daptest", "type": "debugpy", "request": "launch", "program": "hello.py"}
 	plan, err := launch.Prepare(cfg, launch.Vars{Workspace: workspace, Env: os.Getenv})
 	if err != nil {
-		return fmt.Errorf("%v; run 'make test' or 'uv sync' to create %s", err, python)
+		return fmt.Errorf("%v; run 'make test' or 'uv sync' to create %s with debugpy", err, python)
 	}
 
 	adapter := plan.Command[0]

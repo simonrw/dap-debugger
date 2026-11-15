@@ -263,10 +263,6 @@ func recordVSCode(t *testing.T, path string) [][][]string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), "vscode.json")
 	cmd := exec.Command(filepath.Join("..", "..", "tools", "vscode-probe", "run.sh"), path, out)
-	cmd.Env = os.Environ()
-	if dlv, err := launch.FindDlv(); err == nil {
-		cmd.Env = append(cmd.Env, "PATH="+filepath.Dir(dlv)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("probe: %v\n%s", err, output)
 	}
@@ -429,7 +425,7 @@ func TestRequestsMatchVSCode(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// Scenario server commands, such as attach-python's, run $VIRTUAL_ENV/bin/python, which UseAdapter sets.
+			// Scenario server commands run $VIRTUAL_ENV/bin/python or dlv from PATH, which UseAdapter sets.
 			for _, c := range append([]launch.Config{sc.Config}, sc.Configs...) {
 				if c == nil {
 					continue
