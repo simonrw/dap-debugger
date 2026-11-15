@@ -73,11 +73,11 @@ func (md *modal) isPicker() bool {
 
 func (md *modal) filter() {
 	query := md.input.Value()
-	md.filtered = md.filtered[:0]
 
 	if md.fuzzyFilter {
-		md.filtered = append(md.filtered, fzf.Filter(query, md.items)...)
+		md.filtered = fzf.Filter(query, md.items)
 	} else {
+		md.filtered = md.filtered[:0]
 		q := strings.ToLower(query)
 		for i, item := range md.items {
 			if strings.Contains(strings.ToLower(item), q) {

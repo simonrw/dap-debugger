@@ -59,8 +59,10 @@ const (
 	bonusCamel123            = bonusBoundary + scoreGapExtension
 	bonusConsecutive         = -(scoreGapStart + scoreGapExtension)
 	bonusFirstCharMultiplier = 2
-	bonusBoundaryWhite       = bonusBoundary
-	bonusBoundaryDelimiter   = bonusBoundary + 1
+
+	// The path scheme's values; fzf's default scheme uses others.
+	bonusBoundaryWhite     = bonusBoundary
+	bonusBoundaryDelimiter = bonusBoundary + 1
 )
 
 type charClass int
@@ -155,7 +157,7 @@ func Filter(query string, items []string) []int {
 	}
 
 	type match struct {
-		index, score, pathname, length int
+		index, score, distance, length int
 	}
 	var matches []match
 
@@ -182,7 +184,7 @@ nextItem:
 		matches = append(matches, match{
 			index:    i,
 			score:    total,
-			pathname: pathnameDistance(text, begin),
+			distance: pathnameDistance(text, begin),
 			length:   utf8.RuneCountInString(strings.TrimSpace(item)),
 		})
 	}
@@ -191,8 +193,8 @@ nextItem:
 		if a.score != b.score {
 			return b.score - a.score
 		}
-		if a.pathname != b.pathname {
-			return a.pathname - b.pathname
+		if a.distance != b.distance {
+			return a.distance - b.distance
 		}
 		return a.length - b.length
 	})
@@ -227,14 +229,20 @@ type term struct {
 	caseSensitive bool
 }
 
+// fold returns r as the term compares it: lowercased when the term is case
+// insensitive and r is uppercase.
+func (t term) fold(r rune, class charClass) rune {
+	if !t.caseSensitive && class == charUpper {
+		return unicode.ToLower(r)
+	}
+	return r
+}
+
 // in reports whether the term's characters appear in order in text.
 func (t term) in(text []rune) bool {
 	p := 0
 	for _, r := range text {
-		if !t.caseSensitive && classOf(r) == charUpper {
-			r = unicode.ToLower(r)
-		}
-		if r == t.pattern[p] {
+		if t.fold(r, classOf(r)) == t.pattern[p] {
 			p++
 			if p == len(t.pattern) {
 				return true
@@ -281,7 +289,7 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 
 	// First row, the per-character bonuses, the earliest position each
 	// pattern character can take, and the last position the final pattern
-	// character takes.
+	// character can take.
 	best, bestCol := 0, 0
 	pidx, last := 0, 0
 	prevH := 0
@@ -290,9 +298,7 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 
 	for i, r := range text {
 		class := classOf(r)
-		if !t.caseSensitive && class == charUpper {
-			r = unicode.ToLower(r)
-		}
+		r = t.fold(r, class)
 		m.folded[i] = r
 
 		bonus := bonusFor(prevClass, class)
@@ -361,6 +367,8 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 					}
 				}
 
+				// When even the chunk bonus loses to the gap path, this
+				// match starts no chunk.
 				if matchScore+bonus < gapScore {
 					matchScore += m.bonus[col]
 					consecutive = 0
@@ -381,12 +389,13 @@ func (m *matcher) match(text []rune, t term) (score, start int, ok bool) {
 		}
 	}
 
-	return best, m.start(plen, n, bestCol), true
+	return best, m.start(bestCol), true
 }
 
 // start walks the score matrix back from the best cell in the last row to the
 // position the first pattern character matched, as fzf's backtrace does.
-func (m *matcher) start(plen, n, col int) int {
+func (m *matcher) start(col int) int {
+	n, plen := len(m.folded), len(m.first)
 	p := plen - 1
 	preferMatch := true
 
@@ -411,8 +420,8 @@ func (m *matcher) start(plen, n, col int) int {
 		}
 
 		// The next pattern character's row is only filled from its first
-		// possible match, so cells left of that hold values from earlier
-		// matches.
+		// possible match, so cells left of that hold stale values from
+		// earlier items or terms.
 		preferMatch = m.c[row+col] > 1 ||
 			current+1 < plen && col+1 >= m.first[current+1] && m.c[row+n+col+1] > 0
 		col--
